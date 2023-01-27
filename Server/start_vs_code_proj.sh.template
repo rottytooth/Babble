@@ -1,0 +1,24 @@
+set "VIRTUAL_ENV=.babble_env"
+set "PATH=%VIRTUAL_ENV%\Scripts;%PATH%"
+
+set "PYSPARK_PYTHON=%VIRTUAL_ENV%\Scripts\python.exe"
+set "PYSPARK_DRIVER_PYTHON=%PYSPARK_PYTHON%"
+set "REQ_FILE=requirements.txt"
+set "PYTHON_ENVIRONMENT=local"
+
+IF EXIST "%PYSPARK_PYTHON%" (
+    echo "venv is setup moving forward!"
+) ELSE (
+    echo "Lets setup new venv ..."
+    python -m venv --clear %VIRTUAL_ENV%
+
+IF EXIST "%REQ_FILE%" (
+        echo "Lets setun packages based on %REQ_FILE% file!"
+        pip install -r %REQ_FILE%
+) ELSE (
+        echo "No %REQ_FILE% was provided. Install packs manually" 
+)
+)
+
+
+START /B /wait code .

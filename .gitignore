@@ -1,3 +1,15 @@
+.DS_Store
+
+# virtual environment
+.babble_api
+
+# this should be created locally
+start_vs_code_proj.sh
+config.local.ini
+*.db
+
+.vscode
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
