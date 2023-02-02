@@ -1,51 +1,99 @@
-Program = Command+
-
-Command = d:(Print / DefineCall / FunctionCall) _?
 {
-	// filter out the blank spaces
-	return d;
+	const reserved_keywords = ["let"];
+	const builtins = ["doc","source","def","defn","print","println","quote"];
 }
 
-Print = "(" _? "print" e:Expression _? ")"
+Program = Expression+
+
+Expression = (BuiltInExpression / FuncExpression)
+
+BuiltInExpression = (IfExpression / LetExpression)
+
+IfExpression = "(" _? "if" _ c:Expression tr:Expression fl:Expression _? ")" _?
 {
 	return {
-    	type:"print",
-        exp:e
+    	type: "if_expression",
+        condition: c,
+        true_exp: tr,
+        false_exp: fl
     };
 }
 
-FunctionCall = "(" _? f:ID p:Param+ _? ")"
+LetExpression = "(" _? "let" _? "[" _? b:Binding+ "]" _? e:Expression* _? ")" _?
 {
 	return {
-    	type:"function_call",
-    	name:f,
-        params:p
+    	type: "let_expression",
+        bindings: b,
+        exp: e
+    }
+}
+
+Binding = i:Identifier _ e:Expression _?
+{
+	return {
+    	type: "binding",
+        id: i,
+        exp: e
+    }	
+}
+
+FuncExpression = "(" _ func:(Identifier/Operator) args:Expression+ ")" _?
+{
+	var preset = false;
+    
+    if (reserved_keywords.includes(func)) {
+    	error("Invalid use of keyword");
+    }
+	if (builtins.includes(func)) {
+    	preset = true;
+    }
+    
+	return {
+    	type: "expression",
+    	func: func,
+        preset: preset,
+        args: args
+    };
+} / QuotedExpression
+
+QuotedExpression = "'(" exp:Vector+ ")" _?
+{
+	return {
+    	type: "quoted_expression",
+        exp: exp
+    };
+} / Vector
+
+Operator = ("+"/"-"/"*"/"/"/"^") _?
+
+Vector = "[" v:Vector+ "]" _? 
+{
+	return {
+    	type: "vector",
+        exp: v
+    };
+} / Keyword / Local / Literal
+
+Keyword = ":" i:Identifier _?
+{
+	return {
+    	type: "keyword",
+        name: i
     };
 }
 
-DefineCall = "(" _? d:("def"/"defn") _? i:ID e:Expression ")"
+Local = i:Identifier _? 
 {
 	return {
-		type:"definition",
-		command:d,
-		id: i,
-		expression: e
-	};
+    	type: "local",
+        name: i
+    };
 }
 
-ID = d:[a-zA-Z0-9]+ _?
+Literal = l:(NumberLiteral / StringLiteral) _?
 {
-	return d.join('')
+	return l;
 }
-
-Param = _? d:[a-zA-Z0-9]+ _?
-{
-	return d.join('');
-}
-
-Expression = Literal
-
-Literal = NumberLiteral / StringLiteral / CharLiteral
 
 NumberLiteral
 = "-"? DecimalIntegerLiteral "." DecimalDigit* {
@@ -74,11 +122,19 @@ StringLiteral = _? '"' val:[^"]* '"' _?
 	value: val.join("") };
 }
 
-CharLiteral = _? "'" val:[^'] "'" _?
-{ return {
-	type: 'CharLiteral',
-	value: val };
+
+Identifier = f:fla g:a* _?
+{
+	var id = f;
+
+	if (g.length > 0)
+		id = id + g.join("");
+
+	return id;
 }
+
+fla "first letter" = [a-zA-ZÀ-꓆]
+a "letter" = [a-zA-ZÀ-꓆0-9]
 
 _ "whitespace"
 	= [ \t\n\r]*
