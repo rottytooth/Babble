@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Babble Server</title>
+    <link rel="stylesheet" href="static/console.css">
+    <script type="text/javascript">const babble = {};</script>
+    <script src="src/babble.parser.js"></script>
+    <script src="src/babble.executor.js"></script>
+    <script src="static/console.js"></script>
+</head>
+<body>
+    <div id="cover"></div>
+    <div id="cmdWindow">        
+        babble v0.1.0
+        <span class="server_response">-
+        the language where globals are truly global<br/>
+        created by Daniel Temkin, 2015, implemented 2023<br/>
+        (source xxx) to see code for existing expression<br/>
+        (def xxx) to register new expression<br/>
+        (handle xxx) to set your handle<br/>
+        (about) for more info<br/><br/>
+        </span>
+        <span id="typing"><span></span></span><span id="cursor">&#9612;</div>
+</body>
+</html>

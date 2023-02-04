@@ -3,6 +3,10 @@
 # virtual environment
 .babble_api
 
+# js stuff
+node_modules
+package-lock.json
+
 # this should be created locally
 start_vs_code_proj.sh
 config.local.ini

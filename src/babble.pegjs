@@ -65,7 +65,7 @@ FuncExpression = "(" _ func:(Identifier/Operator) args:Expression+ ")" _?
     
 	return {
     	type: "expression",
-    	func: func,
+    	id: func,
         preset: preset,
         args: args
     };
