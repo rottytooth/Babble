@@ -86,11 +86,11 @@ const processLine = () => {
         return;
     } else if (closing > opening) {
         // automatic Syntax Error
-        addLine({"status":"error","message":"SyntaxError: Unmatched parantheses"}); 
+        addLine({"status":"error","message":"syntax error: unmatched parantheses"}); 
     } else {
         try {
             tree = babble.parser.parse(line);
-            babble.executor.ex(tree[0], addLine, line, creator);
+            babble.executor.ex(tree, addLine, line, creator);
         }
         catch(err) {
             if (err.name == "SyntaxError") {

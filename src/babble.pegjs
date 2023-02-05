@@ -1,18 +1,20 @@
 {
 	const reserved_keywords = ["let","def"];
-	const builtins = ["doc","source","defn","print","println","quote"];
+	const builtins = ["doc","source","defn","print","println","quote","range","map"];
 }
 
-Program = Expression+
+Statement = (DefExpression / Expression)
 
 Expression = (BuiltInExpression / FuncExpression)
 
-BuiltInExpression = (IfExpression / LetExpression / DefExpression)
+BuiltInExpression = (IfExpression / LetExpression)
 
 IfExpression = "(" _? "if" _ c:Expression tr:Expression fl:Expression _? ")" _?
 {
 	return {
-    	type: "if_expression",
+    	type: "expression",
+        id: "if",
+        preset: true,
         condition: c,
         true_exp: tr,
         false_exp: fl
@@ -22,13 +24,15 @@ IfExpression = "(" _? "if" _ c:Expression tr:Expression fl:Expression _? ")" _?
 LetExpression = "(" _? "let" _? "[" _? b:Binding+ "]" _? e:Expression* _? ")" _?
 {
 	return {
-    	type: "let_expression",
+    	type: "expression",
+        id: "let",
+        preset: true,
         bindings: b,
         exp: e
     };
 }
 
-DefExpression = "(" _? "def" _?  i:Identifier  p:Params? _? e:Expression _? ")" _?
+DefExpression = "(" _? "def" _?  i:Identifier  p:Params? _? e:Expression+ _? ")" _?
 {
 	return {
     	type: "def_expression",
@@ -52,9 +56,14 @@ Binding = i:Identifier _ e:Expression _?
     };	
 }
 
-FuncExpression = "(" _ func:(Identifier/Operator) args:Expression+ ")" _?
+FuncExpression = "(" _ func:(Identifier/Operator) args:Expression* ")" _?
 {
 	var preset = false;
+    
+    if (func.type === "operator") {
+    	preset = true;
+        func = func.id;
+    }
     
     if (reserved_keywords.includes(func)) {
     	error("Invalid use of keyword");
@@ -81,7 +90,10 @@ QuotedExpression = "'(" exp:Vector+ ")" _?
 
 Operator = o:("+"/"-"/"*"/"/"/"^") _?
 {
-	return o;
+	return {
+    	type: "operator",
+        id: o
+	};        
 }
 
 Vector = "[" v:Vector+ "]" _? 

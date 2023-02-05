@@ -138,8 +138,8 @@ babble.parser = /*
 
     var peg$FAILED = {},
 
-        peg$startRuleFunctions = { Program: peg$parseProgram },
-        peg$startRuleFunction  = peg$parseProgram,
+        peg$startRuleFunctions = { Statement: peg$parseStatement },
+        peg$startRuleFunction  = peg$parseStatement,
 
         peg$c0 = "(",
         peg$c1 = peg$literalExpectation("(", false),
@@ -149,7 +149,9 @@ babble.parser = /*
         peg$c5 = peg$literalExpectation(")", false),
         peg$c6 = function(c, tr, fl) {
         	return {
-            	type: "if_expression",
+            	type: "expression",
+                id: "if",
+                preset: true,
                 condition: c,
                 true_exp: tr,
                 false_exp: fl
@@ -163,7 +165,9 @@ babble.parser = /*
         peg$c12 = peg$literalExpectation("]", false),
         peg$c13 = function(b, e) {
         	return {
-            	type: "let_expression",
+            	type: "expression",
+                id: "let",
+                preset: true,
                 bindings: b,
                 exp: e
             };
@@ -190,6 +194,11 @@ babble.parser = /*
         },
         peg$c19 = function(func, args) {
         	var preset = false;
+            
+            if (func.type === "operator") {
+            	preset = true;
+                func = func.id;
+            }
             
             if (reserved_keywords.includes(func)) {
             	error("Invalid use of keyword");
@@ -224,7 +233,10 @@ babble.parser = /*
         peg$c31 = "^",
         peg$c32 = peg$literalExpectation("^", false),
         peg$c33 = function(o) {
-        	return o;
+        	return {
+            	type: "operator",
+                id: o
+        	};        
         },
         peg$c34 = function(v) {
         	return {
@@ -427,18 +439,12 @@ babble.parser = /*
       );
     }
 
-    function peg$parseProgram() {
-      var s0, s1;
+    function peg$parseStatement() {
+      var s0;
 
-      s0 = [];
-      s1 = peg$parseExpression();
-      if (s1 !== peg$FAILED) {
-        while (s1 !== peg$FAILED) {
-          s0.push(s1);
-          s1 = peg$parseExpression();
-        }
-      } else {
-        s0 = peg$FAILED;
+      s0 = peg$parseDefExpression();
+      if (s0 === peg$FAILED) {
+        s0 = peg$parseExpression();
       }
 
       return s0;
@@ -461,9 +467,6 @@ babble.parser = /*
       s0 = peg$parseIfExpression();
       if (s0 === peg$FAILED) {
         s0 = peg$parseLetExpression();
-        if (s0 === peg$FAILED) {
-          s0 = peg$parseDefExpression();
-        }
       }
 
       return s0;
@@ -760,7 +763,16 @@ babble.parser = /*
                     s7 = null;
                   }
                   if (s7 !== peg$FAILED) {
-                    s8 = peg$parseExpression();
+                    s8 = [];
+                    s9 = peg$parseExpression();
+                    if (s9 !== peg$FAILED) {
+                      while (s9 !== peg$FAILED) {
+                        s8.push(s9);
+                        s9 = peg$parseExpression();
+                      }
+                    } else {
+                      s8 = peg$FAILED;
+                    }
                     if (s8 !== peg$FAILED) {
                       s9 = peg$parse_();
                       if (s9 === peg$FAILED) {
@@ -972,13 +984,9 @@ babble.parser = /*
           if (s3 !== peg$FAILED) {
             s4 = [];
             s5 = peg$parseExpression();
-            if (s5 !== peg$FAILED) {
-              while (s5 !== peg$FAILED) {
-                s4.push(s5);
-                s5 = peg$parseExpression();
-              }
-            } else {
-              s4 = peg$FAILED;
+            while (s5 !== peg$FAILED) {
+              s4.push(s5);
+              s5 = peg$parseExpression();
             }
             if (s4 !== peg$FAILED) {
               if (input.charCodeAt(peg$currPos) === 41) {
@@ -1684,7 +1692,7 @@ babble.parser = /*
 
 
     	const reserved_keywords = ["let","def"];
-    	const builtins = ["doc","source","defn","print","println","quote"];
+    	const builtins = ["doc","source","defn","print","println","quote","range","map"];
 
 
     peg$result = peg$startRuleFunction();

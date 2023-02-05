@@ -20,7 +20,13 @@ class Lexicon():
         values = {"name": name}
         results = await self.database.fetch_all(query=Lexicon.resolve_query, values=values)
         if len(results) == 1:
-            retpacket = {"name":name,"params":results[0]["Params"],"definition":results[0]["Definition"]}
+            params = results[0]["Params"]
+            if params == "null":
+                params = []
+            else:
+                params = json.loads(params)
+            definition = json.loads(results[0]["Definition"])
+            retpacket = {"name":name,"params":params,"definition":definition}
             return json.dumps(retpacket)
         elif len(results) == 0:
             raise HTTPException(status_code=404, detail="Term is unknown")
