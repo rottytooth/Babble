@@ -6,6 +6,12 @@ babble.executor =
     const resolve_url = '/resolve/';
     const assign_url = '/assign';
 
+    const preset_args = {
+        "handle": 1,
+        "source": 1,
+        "doc": 1
+    };
+
     async function topline_expression(tree) {
         let retexp = "";
         try {
@@ -34,11 +40,23 @@ babble.executor =
                     return locals[tree.name];
                 }
                 else 
-                    throw SyntaxError(`syntax error: could not find param with the name ${tree.name}`);
+                    throw {
+                        status: "error",
+                        message: `syntax error: could not find param with the name ${tree.name}`
+                    };
         }
 
-        // if it is not a pre-determined expression
+        // if it is a pre-determined expression
         if (tree.preset) {
+            if (preset_args[tree.id] !== undefined) {
+                if (tree.args.length !== preset_args[tree.id]) {
+                    throw {
+                        status: "error",
+                        message: `${tree.id} requires ${preset_args[tree.id]} argument(s)`
+                    };
+                }
+            }
+
             if ("+-/*^".indexOf(tree.id) > -1) {
                 let add_string = "";
                 // just add all the params
@@ -51,22 +69,40 @@ babble.executor =
                 let final_value = eval(add_string);
                 return final_value;
             }
+            if (tree.id === "source") {
+                if (tree.args[0].type !== "local") {
+                    throw {
+                        status: "error",
+                        message: `you can't source ${tree.args[0].name}`
+                    }
+                }
+                let retset = await resolve(tree.args[0].name);
+                return JSON.parse(retset.line);
+            }
+            if (tree.id === "handle") {
+                babble.executor.handle = tree.args[0].name;
+                return `handle assigned to ${babble.executor.handle}`;
+            }
+            if (tree.id === "doc") {
+                let doc = await resolve(tree.args[0].name, true);
+                return doc['doc'];
+            }
         }
         let def_tree = await resolve(tree.id);
 
-        // there are missing params
-        if (def_tree.params.length > tree.args.length) {
-            let missing_params = def_tree.params.slice(tree.args.length, def_tree.params.length).join(",");
+        // params don't match expected count
+        if (def_tree.params.length !== tree.args.length) {
+            let errorstr = `syntax error: expression ${tree.id} requires ${def_tree.params.length} params but received ${tree.args.length}`;
+
+            // if it's short, tell which params were not provided
+            if (def_tree.params.length > tree.args.length) {
+                let missing_params = def_tree.params.slice(tree.args.length, def_tree.params.length).join(",");
+
+                errorstr += `; missing values for param(s) ${missing_params}`;
+            }
             throw {
                 status: "error",
-                message: `syntax error: expression ${tree.id} requires ${def_tree.params.length} params but received ${tree.args.length}; missing values for param(s) ${missing_params}`
-            };
-        }
-        // there are too many params
-        else if (def_tree.params.length < tree.args.length) {
-            throw {
-                status: "error",
-                message: `syntax error: expression ${tree.id} requires ${def_tree.params.length} params but received ${tree.args.length}`
+                message: errorstr
             };
         }
 
@@ -98,16 +134,22 @@ babble.executor =
         return response;
     }
 
-    async function resolve(term) {
-        // catch 404
+    async function resolve(term, doc_only=false) {
         let url = `${resolve_url}${term}`;
+
+        if (doc_only) {
+            url = `${resolve_url}${term}/doc`;
+        }
+
         const response = await fetch(url);
+
+        // catch 404
         if (response.status == 404) {
             // term is undefined
             console.log("404");
             throw {
                 status:"error",
-                message:`syntax error: expression ${term} is not recognized`
+                message:`syntax error: expression "${term}" is not recognized`
             };
         }
         let retset = await response.json();
@@ -115,7 +157,7 @@ babble.executor =
         return retset;
     }
 
-    async function assign(term, definition, params, line, creator) {
+    async function assign(term, definition, params, line, creator, doc) {
         if (params === undefined)
             params = "";
 
@@ -124,7 +166,7 @@ babble.executor =
         params = JSON.stringify(params);
         definition = JSON.stringify(definition);
 
-        let body = {"term":term,"definition":definition,"params":params,"line":line,"creator":creator};
+        let body = {"term":term,"definition":definition,"params":params,"line":line,"creator":creator, "doc":doc};
 
         const response = await fetch(assign_url, {
             method:'POST',
@@ -184,7 +226,11 @@ babble.executor =
                     return;
 
                 case "def_expression":
-                    assign(tree.id, tree.exp, tree.params, line, creator).then(result => {
+                    if (babble.executor.handle === undefined || babble.executor.handle === null) {
+                        callback({"status": "error", "message": "please select a handle with (handle xxx) before def'ing a new command"});
+                        return;
+                    }
+                    assign(tree.id, tree.exp, tree.params, line, babble.executor.handle, tree.doc).then(result => {
                         if (result.status === "willnotadd") {
                             callback({"status":"error","message":`bad request: The term ${tree.id} already has a definition: ${result.old_def}`});
                         } else if (result.status === "error") {
@@ -207,3 +253,5 @@ babble.executor =
     };
 
 })();
+
+babble.executor.handle = null;

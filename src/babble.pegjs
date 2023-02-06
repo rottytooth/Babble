@@ -1,6 +1,6 @@
 {
 	const reserved_keywords = ["let","def"];
-	const builtins = ["doc","source","defn","print","println","quote","range","map"];
+	const builtins = ["doc","source","defn","print","println","quote","range","map","handle"];
 }
 
 Statement = (DefExpression / Expression)
@@ -32,14 +32,20 @@ LetExpression = "(" _? "let" _? "[" _? b:Binding+ "]" _? e:Expression* _? ")" _?
     };
 }
 
-DefExpression = "(" _? "def" _?  i:Identifier  p:Params? _? e:Expression+ _? ")" _?
+DefExpression = "(" _? "def" _?  i:Identifier _? d:DocString? _? p:Params _? e:Expression+ _? ")" _?
 {
 	return {
     	type: "def_expression",
         id: i,
+        doc: d,
         params: p,
         exp: e
     };
+}
+
+DocString = '"' d:[^"]+ '"'
+{
+	return d.join("");
 }
 
 Params = _? "[" _? i:Identifier* _? "]" _?

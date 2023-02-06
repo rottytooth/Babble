@@ -7,10 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.logger import logger
 from fastapi.staticfiles import StaticFiles
 from flasgger import Schema, Swagger
-from pydantic import BaseModel
 from starlette.responses import FileResponse 
 
 from lexicon_dao import Lexicon
+from models.term_definition import TermDefinition
 
 prefix = '' # no prefix for now
 logger.setLevel('DEBUG')
@@ -27,14 +27,6 @@ app = FastAPI(
 
 swagger_config = Swagger.DEFAULT_CONFIG
 swagger_config['specs_route'] = f'{prefix}/docs/'
-
-class TermDefinition(BaseModel):
-    term: str
-    definition: str
-    params: str | None = None
-    line: str
-    creator: str | None = None
-
 
 @app.on_event("startup")
 async def database_connect():
@@ -55,10 +47,16 @@ async def Resolve(cmd_name:str):
     result = await lexicon.resolve(cmd_name)
     return Response(content=result, media_type="application/json")
 
+@app.get('/resolve/{cmd_name}/doc')
+async def ResolveDoc(cmd_name:str):
+    lexicon = Lexicon(database)
+    result = await lexicon.resolve_doc(cmd_name)
+    return Response(content=result, media_type="application/json")
+
 @app.post('/assign')
 async def Assign(termdef: TermDefinition):
     lexicon = Lexicon(database)
-    result = await lexicon.assign(termdef.term, termdef.definition, termdef.line, termdef.creator, termdef.params)
+    result = await lexicon.assign(termdef)
     return Response(content=f'{{"result":"{result}"}}', media_type="application/json")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")

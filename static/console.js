@@ -3,8 +3,6 @@ const cover_start_opacity = 0.7;
 const prev_lines = [];
 let line_history = 0;
 
-let creator = "";
-
 const keyevents = (e) => {
     var code = e.keyCode || e.which;
     type(String.fromCharCode(code));
@@ -90,7 +88,7 @@ const processLine = () => {
     } else {
         try {
             tree = babble.parser.parse(line);
-            babble.executor.ex(tree, addLine, line, creator);
+            babble.executor.ex(tree, addLine, line);
         }
         catch(err) {
             if (err.name == "SyntaxError") {
