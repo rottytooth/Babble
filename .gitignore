@@ -2,6 +2,7 @@
 
 # virtual environment
 .babble_api
+.bbl_env
 
 # js stuff
 node_modules
