@@ -108,6 +108,14 @@ Vector = "[" v:Vector+ "]" _?
     	type: "vector",
         exp: v
     };
+} / Set 
+
+Set = "#{" v:Vector+ "}" _?
+{
+	return {
+    	type: "set",
+        exp: v
+    };
 } / Keyword / Local / Literal
 
 Keyword = ":" i:Identifier _?
@@ -164,6 +172,7 @@ StringLiteral = _? '"' val:[^"]* '"' _?
 Identifier = f:fla g:a* _?
 {
 	var id = f;
+    
 
 	if (g.length > 0)
 		id = id + g.join("");
@@ -172,7 +181,7 @@ Identifier = f:fla g:a* _?
 }
 
 fla "first letter" = [a-zA-ZÀ-꓆]
-a "letter" = [a-zA-ZÀ-꓆0-9]
+a "letter" = [a-zA-ZÀ-꓆0-9-]
 
 _ "whitespace"
 	= [ \t\n\r]*

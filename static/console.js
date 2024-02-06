@@ -1,4 +1,3 @@
-const cover_start_opacity = 0.7;
 
 const prev_lines = [];
 let line_history = 0;
