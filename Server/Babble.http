@@ -1,0 +1,6 @@
+@Babble_HostAddress = http://localhost:5043
+
+GET {{Babble_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

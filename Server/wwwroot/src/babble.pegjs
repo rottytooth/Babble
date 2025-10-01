@@ -117,7 +117,7 @@ Set = "#{" v:Vector+ "}" _?
         exp: v
     };
 } / Keyword / Local / Literal
-
+    
 Keyword = ":" i:Identifier _?
 {
 	return {

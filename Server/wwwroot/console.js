@@ -2,71 +2,101 @@
 const prev_lines = [];
 let line_history = 0;
 
+// Focus the input when page loads
+window.addEventListener('load', () => {
+    const userInput = document.getElementById("userInput");
+    userInput.focus();
+});
+
+// Handle clicks anywhere in the document to focus the current input
+document.addEventListener('click', () => {
+    const userInput = document.getElementById("userInput");
+    if (userInput) {
+        userInput.focus();
+    }
+});
+
 const keyevents = (e) => {
-    var code = e.keyCode || e.which;
-    type(String.fromCharCode(code));
+    // Let contenteditable handle normal typing
     return true;
 }
 
 const specialKeys = (e) => {
+    const userInput = document.getElementById("userInput");
+    
+    if (!userInput) return; // Safety check
+    
     if (e.keyCode == 13) { // return key
-        type(String.fromCharCode(13));
         processLine();
         e.preventDefault(); 
     }
-    if (e.keyCode == 8) { // backspace
-        backspace();
-        e.preventDefault(); 
-    }
     if (e.keyCode == 38) { // up arrow
-        let typeblock = document.getElementById("typing");
-        currline = typeblock.lastChild;
         line_history++;
         if (prev_lines.length - line_history >= 0 && prev_lines[prev_lines.length - line_history] !== undefined) {
-            currline.innerText = prev_lines[prev_lines.length - line_history]
+            userInput.innerText = prev_lines[prev_lines.length - line_history];
+            // Move cursor to end
+            setCursorToEnd(userInput);
         }
         e.preventDefault(); 
     }
     if (e.keyCode == 40) { // down arrow
-        let typeblock = document.getElementById("typing");
-        currline = typeblock.lastChild;
         line_history--;
         if (line_history > 0 && prev_lines[prev_lines.length - line_history] !== undefined) {
-            currline.innerText = prev_lines[prev_lines.length - line_history]
+            userInput.innerText = prev_lines[prev_lines.length - line_history];
         } else {
-            currline.innerText = "";
+            userInput.innerText = "";
         }
+        // Move cursor to end
+        setCursorToEnd(userInput);
         e.preventDefault(); 
     }
 }
 
+// Helper function to move cursor to end of contenteditable
+const setCursorToEnd = (element) => {
+    const range = document.createRange();
+    const selection = window.getSelection();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+
 const backspace = () => {
-    let tyc = document.getElementById("typing").lastChild;
-    tyc.innerText = tyc.innerText.substring(0, tyc.innerText.length - 1);
+    // This is now handled by contenteditable, but keeping for compatibility
 }
 
 const type = (content) => {
-    let tyc = document.getElementById("typing").lastChild;
+    // This function is now mainly for compatibility, 
+    // as contenteditable handles most typing
+    let userInput = document.getElementById("userInput");
     let cmdWindow = document.getElementById("cmdWindow");
-
-    tyc.innerText += content;
-    cmdWindow.scrollTo(0, cmdWindow.scrollHeight);
+    
+    if (userInput) {
+        userInput.innerText += content;
+        cmdWindow.scrollTo(0, cmdWindow.scrollHeight);
+    }
 }
 
 document.onkeypress = keyevents;
 document.onkeydown = specialKeys;
 
 window.addEventListener('paste', (event) => { 
-    let paste = (event.clipboardData || window.clipboardData).getData('text');
-    let typeblock = document.getElementById("typing");
-    typeblock.lastChild.innerText += paste;
+    // Let contenteditable handle paste naturally
+    let userInput = document.getElementById("userInput");
+    // Ensure focus is on the current input
+    if (userInput) {
+        userInput.focus();
+    }
 });
 
 // running expressions
 
 const processLine = () => {
-    let typeblock = document.getElementById("typing");
-    let line = typeblock.lastChild.innerText;
+    let userInput = document.getElementById("userInput");
+    if (!userInput) return; // Safety check
+    
+    let line = userInput.innerText;
     line = line.trim();
 
     if (line.length === 0) {
@@ -100,6 +130,18 @@ const processLine = () => {
 }
 
 const addLine = (responsepacket) => {
+    let userInput = document.getElementById("userInput");
+    let currentText = userInput.innerText;
+    
+    // Make the current input read-only by removing contenteditable and id
+    userInput.removeAttribute("contenteditable");
+    userInput.removeAttribute("id");
+    
+    // Add the command that was just executed as read-only text
+    if (currentText.trim()) {
+        userInput.innerText = currentText;
+    }
+    
     let line = document.createElement('span');
 
     // we got no response at all
@@ -121,13 +163,22 @@ const addLine = (responsepacket) => {
         line.innerText = responsepacket.message;
         line.innerText += "\n";
     }
+    
+    // Create new prompt line
     carrot = document.createElement('span');
     carrot.innerHTML = "&gt; ";
     typeblock.appendChild(carrot);
 
-    userline = document.createElement('span');
-    typeblock.appendChild(userline);
+    // Create new editable input span
+    let newUserInput = document.createElement('span');
+    newUserInput.setAttribute("contenteditable", "true");
+    newUserInput.setAttribute("id", "userInput");
+    typeblock.appendChild(newUserInput);
+    
     window.scrollTo(0, document.body.scrollHeight);
+    
+    // Focus the new input for continued typing
+    newUserInput.focus();
 
     line_history = 0;
 }
