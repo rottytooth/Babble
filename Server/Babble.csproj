@@ -4,6 +4,17 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    
+    <!-- Version configuration -->
+    <VersionMajor>0</VersionMajor>
+    <VersionMinor>4</VersionMinor>
+    <!-- Use days since 2024-01-01 as patch version for auto-increment -->
+    <VersionPatch>$([System.Math]::Floor($([System.DateTime]::Now.Subtract($([System.DateTime]::Parse("2024-01-01"))).TotalDays)))</VersionPatch>
+    <!-- Use minutes since midnight as revision for build uniqueness -->
+    <VersionRevision>$([System.Math]::Floor($([System.DateTime]::Now.TimeOfDay.TotalMinutes)))</VersionRevision>
+    <AssemblyVersion>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(VersionRevision)</AssemblyVersion>
+    <FileVersion>$(AssemblyVersion)</FileVersion>
+    <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch)</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,5 +22,16 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
   </ItemGroup>
+
+  <Target Name="CopyParserFiles" BeforeTargets="Build">
+    <ItemGroup>
+      <ParserFiles Include="../Parser/**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ParserFiles)" DestinationFolder="wwwroot/parser/%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CleanParserFiles" BeforeTargets="Clean">
+    <RemoveDir Directories="wwwroot/parser" />
+  </Target>
 
 </Project>

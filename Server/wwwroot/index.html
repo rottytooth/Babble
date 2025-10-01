@@ -4,14 +4,56 @@
     <title>Babble Server</title>
     <link rel="stylesheet" href="console.css">
     <script type="text/javascript">const babble = {};</script>
-    <script src="src/babble.parser.js"></script>
-    <script src="src/babble.executor.js"></script>
+    <script src="parser/babble.parser.js"></script>
+    <script src="parser/babble.executor.js"></script>
     <script src="console.js"></script>
+    <script>
+        // Wait for DOM to be ready and then fetch version info
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Attempting to fetch version info...');
+            
+            fetch('/info')
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    console.log('Response headers:', response.headers);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text(); // Get as text first to debug
+                })
+                .then(text => {
+                    console.log('Raw response text:', text);
+                    try {
+                        const data = JSON.parse(text);
+                        console.log('Parsed JSON data:', data);
+                        if (data && data.version) {
+                            document.title = `Babble Server v${data.version}`;
+                            console.log('Title updated to:', document.title);
+                            
+                            // Also update the version in the page content
+                            const versionSpan = document.getElementById('versionDisplay');
+                            if (versionSpan) {
+                                versionSpan.textContent = data.version;
+                            }
+                        } else {
+                            console.warn('Version property not found in response:', data);
+                        }
+                    } catch (parseError) {
+                        console.error('JSON parse error:', parseError);
+                    }
+                })
+                .catch(error => {
+                    console.error('Could not fetch version info:', error);
+                    // Fallback to a default version
+                    document.title = 'Babble Server';
+                });
+        });
+    </script>
 </head>
 <body>
     <div id="cover"></div>
-    <div id="cmdWindow">        
-        babble v0.1.0
+    <div id="cmdWindow">
+        babble v<span id="versionDisplay"></span>
         <span class="server_response">-
         the language where globals are truly global<br/>
         created by <a href="https://danieltemkin.com">Daniel Temkin</a>, 2015, implemented 2023-ish<br/>

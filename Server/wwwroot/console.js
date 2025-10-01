@@ -62,10 +62,6 @@ const setCursorToEnd = (element) => {
     selection.addRange(range);
 }
 
-const backspace = () => {
-    // This is now handled by contenteditable, but keeping for compatibility
-}
-
 const type = (content) => {
     // This function is now mainly for compatibility, 
     // as contenteditable handles most typing

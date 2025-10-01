@@ -40,9 +40,11 @@ a, a:hover, a:visited {
     opacity: .1;
 }
 .server_response {
+    padding-left: 10px;
     color: #316BCD;
 }
 .error_response {
+    padding-left: 10px;
     color: #CD3131;
 }
 .code {
