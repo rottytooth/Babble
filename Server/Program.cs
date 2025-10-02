@@ -23,6 +23,11 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 
 
+app.MapGet("/api/userip", (HttpContext context) => 
+{
+    return context.Connection.RemoteIpAddress?.ToString() ?? "";
+});
+
 app.MapGet("/info", () =>
 {
     var assembly = System.Reflection.Assembly.GetExecutingAssembly();

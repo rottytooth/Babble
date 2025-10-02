@@ -47,6 +47,10 @@ a, a:hover, a:visited {
     padding-left: 10px;
     color: #CD3131;
 }
+.verify_pwd_response {
+    padding-left: 10px;
+    color: #316BCD;
+}
 .code {
     color: #333;
 }
@@ -63,10 +67,26 @@ a, a:hover, a:visited {
     caret-color: #333;
 }
 
+input[type="password"] {
+    outline: none;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    display: inline;
+    min-width: 1ch;
+    caret-color: #333;
+}
+
 #userInput:empty:before {
     content: "";
     display: inline-block;
     width: 0;
+}
+
+.promptPrefix {
+    color: #888;
 }
   
 @keyframes blinker {

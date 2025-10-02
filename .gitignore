@@ -14,3 +14,7 @@ config.local.ini
 *.db
 
 .vscode
+
+# OS
+.DS_Store
+Thumbs.db

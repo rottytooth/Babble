@@ -13,9 +13,9 @@ babble.executor =
     };
 
     async function topline_expression(tree) {
-        let retexp = "";
         try {
-            retexp = await process_expression(tree);
+            let exp = await process_expression(tree);
+            return exp;
         } catch(err) {
             if (!err.status) {
                 err.status = "error";
@@ -23,21 +23,21 @@ babble.executor =
             }
             return {"status":err.status, "message": err.message};
         }
-        return {"status":"success", "message": retexp};
     }
 
     async function process_expression(tree, locals) {
-        // console.log(`running expression ${line}, expression name ${tree.id}, params ${tree.params}`);
+        // throws an error if it fails to process.
+        // return status: "success" or "verify_pwd"
 
         switch(tree.type) {
             case "IntLiteral":
             case "FloatLiteral":
-                return tree.value;
+                return {"status":"success", "message": tree.value};
             case "StringLiteral":
-                return '"' + JSON.stringify(tree.value) + '"';
+                return {"status":"success", "message": '"' + JSON.stringify(tree.value) + '"'};
             case "Local":
                 if (tree.name in locals) {
-                    return locals[tree.name];
+                    return {"status":"success", "message": locals[tree.name]};
                 }
                 else 
                     throw {
@@ -64,10 +64,19 @@ babble.executor =
                     if (i > 0) {
                         add_string += ` ${tree.id} `;
                     }
-                    add_string += await process_expression(tree.args[i], locals);
+                    let result = await process_expression(tree.args[i], locals);
+                    if (result.status == "success") {
+                        add_string += result.message;
+                    } else {
+                        throw {
+                            status: "error",
+                            message: "could not process expression"
+                            //FIXME: more detail?
+                        };
+                    }
                 }
                 let final_value = eval(add_string);
-                return final_value;
+                return {"status":"success", "message": final_value};
             }
             if (tree.id === "source") {
                 if (tree.args[0].type !== "local") {
@@ -77,15 +86,15 @@ babble.executor =
                     }
                 }
                 let retset = await resolve(tree.args[0].name);
-                return JSON.parse(retset.line);
+                return {"status":"success", "message": JSON.parse(retset.line)};
             }
             if (tree.id === "handle") {
                 babble.executor.handle = tree.args[0].name;
-                return `handle assigned to ${babble.executor.handle}`;
+                return {"status":"verify_pwd", "message":"handle to be verified", "handle": babble.executor.handle};
             }
             if (tree.id === "doc") {
                 let doc = await resolve(tree.args[0].name, true);
-                return doc['doc'];
+                return {"status":"success", "message": doc['doc']};
             }
         }
         let def_tree = await resolve(tree.id);
@@ -125,13 +134,21 @@ babble.executor =
             }
             switch (children[i].type) {
                 case "expression":
-                    response += await process_expression(children[i], parameter_mapping);
+                    let expr_result = await process_expression(children[i], parameter_mapping);
+                    if (expr_result.status == "success") {
+                        response += expr_result.message;
+                    } else {
+                        throw {
+                            status: "error",
+                            message: "could not process expression"
+                        };
+                    }
                     break;
             }
         }
 
         console.log(response);
-        return response;
+        return {"status":"success", "message": response};
     }
 
     async function resolve(term, doc_only=false) {

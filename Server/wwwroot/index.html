@@ -10,6 +10,8 @@
     <script>
         // Wait for DOM to be ready and then fetch version info
         document.addEventListener('DOMContentLoaded', function() {
+            addNewPrompt();
+
             console.log('Attempting to fetch version info...');
             
             fetch('/info')
@@ -63,6 +65,6 @@
         (handle <i>xxx</i>) to set your handle<br/>
         (about) for more info<br/><br/>
         </span>
-        <span id="typing"><span>&gt; </span><span contenteditable="true" id="userInput"></span></span></div>
+        <span id="typing"></span></div>
 </body>
 </html>

@@ -150,6 +150,30 @@ const addLine = (responsepacket) => {
         line.className = 'server_response';
     } else if (responsepacket.status == "error") {
         line.className = 'error_response';
+    } else if (responsepacket.status == "verify_pwd") {
+        line.className = 'verify_pwd_response';
+
+        line.innerText = "pwd: ";
+        
+        // Add password input field
+        let passwordInput = document.createElement('input');
+        passwordInput.type = 'password';
+        passwordInput.id = 'passwordField';
+        line.appendChild(passwordInput);
+
+        // Add event listener for Enter key
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.keyCode === 13) { // Enter key
+                handlePasswordSubmission(passwordInput.value, responsepacket.handle);
+                e.preventDefault();
+            }
+        });
+
+        let typeblock = document.getElementById("typing");
+        typeblock.appendChild(line);
+        passwordInput.focus();
+
+        return; // don't add another prompt yet
     }
 
     let typeblock = document.getElementById("typing");
@@ -157,12 +181,74 @@ const addLine = (responsepacket) => {
     
     if (responsepacket.message) {
         line.innerText = responsepacket.message;
-        line.innerText += "\n";
     }
     
     // Create new prompt line
-    carrot = document.createElement('span');
-    carrot.innerHTML = "&gt; ";
+    addNewPrompt();
+}
+
+function handlePasswordSubmission(password, handle) {
+    // Handle password submission logic here
+    console.log('Password submitted for handle:', handle);
+    console.log('Password length:', password.length);
+    
+    // You can add your password verification logic here
+    // For example, make an API call to verify the password
+
+    // Store the handle in session cookie
+    document.cookie = `handle=${handle}; path=/; SameSite=Strict`;
+    
+    // Remove the password input and continue with normal flow
+    const passwordField = document.getElementById('passwordField');
+    if (passwordField) {
+        passwordField.remove();
+    }
+    
+    // Add new prompt line
+    addNewPrompt();
+}
+
+// Get handle from session cookie or use IP address
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+function addNewPrompt() {
+    let typeblock = document.getElementById("typing");
+    
+    let linebreak = document.createElement('br');
+    typeblock.appendChild(linebreak);
+    
+    // Create new prompt line    
+    let carrot = document.createElement('span');
+    
+    let handle = getCookie('handle');
+    let promptPrefix = '';
+    
+    if (handle) {
+        promptPrefix = `[${handle}]`;
+    } else {
+        // Get user's IP address from server
+        try {
+            fetch('/api/userip')
+                .then(response => response.text())
+                .then(ip => {
+                    promptPrefix = `[${ip}]`;
+                    carrot.innerHTML = promptPrefix + "&gt; ";
+                });
+        } catch (error) {
+            promptPrefix = '';
+        }
+    }
+    
+    // Set carrot content for handle case (IP case is handled in the fetch callback)
+    if (handle) {
+        carrot.innerHTML = "<span class='promptPrefix'>" + promptPrefix + "</span>&gt; ";
+    }
+    
     typeblock.appendChild(carrot);
 
     // Create new editable input span

@@ -2,7 +2,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Babble", "Babble.csproj", "{992C4E6C-E5B8-1448-0FB9-26D08510A8C1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Babble", "Server/Babble.csproj", "{992C4E6C-E5B8-1448-0FB9-26D08510A8C1}"
+EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "BabbleClient", "Client/package.json", "{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,11 +16,18 @@ Global
 		{992C4E6C-E5B8-1448-0FB9-26D08510A8C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{992C4E6C-E5B8-1448-0FB9-26D08510A8C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{992C4E6C-E5B8-1448-0FB9-26D08510A8C1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1F4835FB-69B5-4B3E-A835-5EDF412FED8F}
+	EndGlobalSection
+	GlobalSection(StartupProject) = postSolution
+		StartupProject = {992C4E6C-E5B8-1448-0FB9-26D08510A8C1}
 	EndGlobalSection
 EndGlobal
