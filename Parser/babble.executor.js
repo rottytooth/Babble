@@ -28,6 +28,8 @@ babble.executor =
     async function process_expression(tree, locals) {
         // throws an error if it fails to process.
         // return status: "success" or "verify_pwd"
+        
+        // locals is a mapping of param name to value
 
         switch(tree.type) {
             case "IntLiteral":
@@ -35,15 +37,16 @@ babble.executor =
                 return {"status":"success", "message": tree.value};
             case "StringLiteral":
                 return {"status":"success", "message": '"' + JSON.stringify(tree.value) + '"'};
-            case "Local":
+            case "local":
                 if (tree.name in locals) {
                     return {"status":"success", "message": locals[tree.name]};
                 }
-                else 
+                else {
                     throw {
                         status: "error",
                         message: `syntax error: could not find param with the name ${tree.name}`
                     };
+                }
         }
 
         // if it is a pre-determined expression
@@ -66,7 +69,14 @@ babble.executor =
                     }
                     let result = await process_expression(tree.args[i], locals);
                     if (result.status == "success") {
-                        add_string += result.message;
+
+                        // Check if result.message is an object with type property
+                        if (typeof result.message === 'object' && result.message !== null && result.message.hasOwnProperty('type')) {
+                            let processed_result = await process_expression(result.message, locals);
+                            add_string += processed_result.message;
+                        } else {
+                            add_string += result.message;
+                        }
                     } else {
                         throw {
                             status: "error",

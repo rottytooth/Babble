@@ -192,11 +192,14 @@ function handlePasswordSubmission(password, handle) {
     console.log('Password submitted for handle:', handle);
     console.log('Password length:', password.length);
     
-    // You can add your password verification logic here
+    // FIXME: You can add your password verification logic here
     // For example, make an API call to verify the password
 
     // Store the handle in session cookie
-    document.cookie = `handle=${handle}; path=/; SameSite=Strict`;
+    document.cookie = `handle=${handle}; path=/; SameSite=Strict; Secure`;
+
+    // Set the handle in babble.executor
+    babble.executor.handle = handle;
     
     // Remove the password input and continue with normal flow
     const passwordField = document.getElementById('passwordField');
@@ -237,7 +240,7 @@ function addNewPrompt() {
                 .then(response => response.text())
                 .then(ip => {
                     promptPrefix = `[${ip}]`;
-                    carrot.innerHTML = promptPrefix + "&gt; ";
+                    carrot.innerHTML = `<span class='promptPrefix'>${promptPrefix}</span>&gt; `;
                 });
         } catch (error) {
             promptPrefix = '';

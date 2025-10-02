@@ -1,5 +1,43 @@
 const fs = require('fs-extra');
 const path = require('path');
+const peggy = require('peggy');
+
+async function buildParser() {
+  const parserDir = path.join(__dirname, '..', '..', 'Parser');
+  const grammarFile = path.join(parserDir, 'babble.pegjs');
+  const outputFile = path.join(parserDir, 'babble.parser.js');
+  
+  try {
+    console.log('🔨 Building parser from grammar...');
+    
+    // Check if grammar file exists
+    if (!(await fs.pathExists(grammarFile))) {
+      console.error(`Error: Grammar file not found at ${grammarFile}`);
+      process.exit(1);
+    }
+    
+    // Read the PEG grammar
+    const grammarContent = await fs.readFile(grammarFile, 'utf8');
+    
+    // Generate parser
+    const parser = peggy.generate(grammarContent, {
+      output: 'source',
+      format: 'globals',
+      exportVar: 'babble.parser'
+    });
+    
+    // Fix the export to remove 'root.' prefix
+    const fixedParser = parser.replace('root.babble.parser', 'babble.parser');
+    
+    // Write the generated parser
+    await fs.writeFile(outputFile, fixedParser);
+    console.log('✅ Parser generated successfully!');
+    
+  } catch (error) {
+    console.error('❌ Error generating parser:', error.message);
+    process.exit(1);
+  }
+}
 
 async function copyParser() {
   const sourceDir = path.join(__dirname, '..', '..', 'Parser');
@@ -36,4 +74,9 @@ async function copyParser() {
 }
 
 // Run the build process
-copyParser();
+async function main() {
+  await buildParser();
+  await copyParser();
+}
+
+main();

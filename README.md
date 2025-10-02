@@ -35,6 +35,9 @@ The project consists of three main components:
   - Command-line execution environment
   - Parser integration
 
+> [!WARNING]
+> NOTE: If you make changes to the prgjs, you have to build the Client and then the Server!
+
 ## Language Features
 
 ## Quick Start
