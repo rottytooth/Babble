@@ -1,0 +1,21 @@
+{
+  "name": "babble-parser-tests",
+  "version": "1.0.0",
+  "description": "Test suite for Babble parser and executor",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": ["babble", "tests"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/*.test.js"],
+    "verbose": true
+  }
+}

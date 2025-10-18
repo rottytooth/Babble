@@ -57,11 +57,16 @@ async function copyParser() {
       await fs.remove(targetDir);
     }
     
-    // Copy Parser contents to parser subfolder
+    // Copy Parser contents to parser subfolder (excluding tests)
     console.log(`Copying Parser contents from ${sourceDir} to ${targetDir}...`);
-    await fs.copy(sourceDir, targetDir);
+    await fs.copy(sourceDir, targetDir, {
+      filter: (src) => {
+        // Exclude the tests folder
+        return !src.includes('/tests') && !src.includes('\\tests');
+      }
+    });
     
-    console.log('✅ Parser contents copied successfully!');
+    console.log('✅ Parser contents copied successfully (excluding tests folder)!');
     
     // List copied files for verification
     const files = await fs.readdir(targetDir);
