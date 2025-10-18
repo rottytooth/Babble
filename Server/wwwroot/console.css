@@ -47,6 +47,10 @@ a, a:hover, a:visited {
     padding-left: 10px;
     color: #CD3131;
 }
+.warning_response {
+    padding-left: 10px;
+    color: #CC8400;()
+}
 .verify_pwd_response {
     padding-left: 10px;
     color: #316BCD;

@@ -11,7 +11,10 @@ public class LexiconDao : IDisposable
 
     const string ResolveDocQuery = "SELECT Doc FROM Term WHERE Name=@name;";
 
-    const string InsertQuery = "INSERT INTO Term (Name, Params, ParamNum, Definition, Line, Creator, Doc) VALUES (@name, @params, @paramcount, @def, @line, @creator, @doc);";
+    const string InsertQuery = @"INSERT INTO Term 
+        (Name, Params, ParamNum, Definition, Line, Creator, IPAddr, Doc) 
+        VALUES 
+        (@name, @params, @paramcount, @def, @line, @creator, @ipaddr, @doc);";
 
     public LexiconDao()
     {
@@ -128,6 +131,7 @@ public class LexiconDao : IDisposable
         command.Parameters.AddWithValue("@def", termdef.Definition);
         command.Parameters.AddWithValue("@line", termdef.Line);
         command.Parameters.AddWithValue("@creator", termdef.Creator ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@ipaddr", termdef.IPAddr ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@doc", termdef.Doc ?? (object)DBNull.Value);
 
         try

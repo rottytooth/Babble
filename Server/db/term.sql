@@ -5,7 +5,9 @@ CREATE TABLE "Term" (
 	"ParamNum"	INTEGER,
 	"Definition"	TEXT NOT NULL,
 	"Line"	TEXT NOT NULL,
+	"Doc"	TEXT,
 	"Creator"	TEXT,
+	"IPAddr"	TEXT,
 	PRIMARY KEY("ID" AUTOINCREMENT),
 	UNIQUE("Name","ParamNum")
 )

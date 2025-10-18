@@ -112,8 +112,7 @@ const processLine = () => {
         addLine({"status":"error","message":"syntax error: unmatched parantheses"}); 
     } else {
         try {
-            tree = babble.parser.parse(line);
-            babble.executor.ex(tree, addLine, line);
+            babble.executor.ex(line, addLine);
         }
         catch(err) {
             if (err.name == "SyntaxError") {
@@ -150,6 +149,8 @@ const addLine = (responsepacket) => {
         line.className = 'server_response';
     } else if (responsepacket.status == "error") {
         line.className = 'error_response';
+    } else if (responsepacket.status == "warning") {
+        line.className = 'warning_response';
     } else if (responsepacket.status == "verify_pwd") {
         line.className = 'verify_pwd_response';
 
@@ -196,7 +197,7 @@ function handlePasswordSubmission(password, handle) {
     // For example, make an API call to verify the password
 
     // Store the handle in session cookie
-    document.cookie = `handle=${handle}; path=/; SameSite=Strict; Secure`;
+    // document.cookie = `handle=${handle}; path=/; SameSite=Strict; Secure`;
 
     // Set the handle in babble.executor
     babble.executor.handle = handle;
@@ -211,15 +212,18 @@ function handlePasswordSubmission(password, handle) {
     addNewPrompt();
 }
 
-// Get handle from session cookie or use IP address
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
+async function getIpaddr() {
+    // Get user's IP address from server
+    try {
+        const response = await fetch('/api/userip');
+        const ip = await response.text();
+        return ip;
+    } catch (error) {
+        return '';
+    }
 }
 
-function addNewPrompt() {
+async function addNewPrompt() {
     let typeblock = document.getElementById("typing");
     
     let linebreak = document.createElement('br');
@@ -228,29 +232,19 @@ function addNewPrompt() {
     // Create new prompt line    
     let carrot = document.createElement('span');
     
-    let handle = getCookie('handle');
+    // let handle = getCookie('handle');
+    let handle = babble.executor.handle;
     let promptPrefix = '';
     
     if (handle) {
         promptPrefix = `[${handle}]`;
     } else {
-        // Get user's IP address from server
-        try {
-            fetch('/api/userip')
-                .then(response => response.text())
-                .then(ip => {
-                    promptPrefix = `[${ip}]`;
-                    carrot.innerHTML = `<span class='promptPrefix'>${promptPrefix}</span>&gt; `;
-                });
-        } catch (error) {
-            promptPrefix = '';
-        }
+        // is it possible for this to change while we're on the page?
+        // if not, we should just cache it once on load
+        const ipaddr = await getIpaddr();
+        promptPrefix = `[${ipaddr}]`;
     }
-    
-    // Set carrot content for handle case (IP case is handled in the fetch callback)
-    if (handle) {
-        carrot.innerHTML = "<span class='promptPrefix'>" + promptPrefix + "</span>&gt; ";
-    }
+    carrot.innerHTML = `<span class='promptPrefix'>${promptPrefix}</span>&gt; `;
     
     typeblock.appendChild(carrot);
 

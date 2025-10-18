@@ -7,5 +7,6 @@ public class TermDefinition
     public string? Params { get; set; }
     public required string Line { get; set; }
     public string? Creator { get; set; }
+    public string? IPAddr { get; set; }
     public string? Doc { get; set; }
 }

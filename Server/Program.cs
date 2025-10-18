@@ -87,6 +87,7 @@ app.MapPost("/assign", async (TermDefinition termDefinition, LexiconDao lexiconD
     }
     catch (LexicalException ex)
     {
+        //FIXME: This gets thrown for a lot of other reasons
         return Results.Conflict(new { error = ex.Message });
     }
     catch (Exception ex)

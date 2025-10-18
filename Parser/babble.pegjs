@@ -1,187 +1,206 @@
-{
-	const reserved_keywords = ["let","def"];
-	const builtins = ["doc","source","defn","print","println","quote","range","map","handle"];
-}
+// Clojure PEG.js Grammar
 
-Statement = (DefExpression / Expression)
+Start
+  = _ forms:(Form _)* { return forms.map(f => f[0]); }
 
-Expression = (BuiltInExpression / FuncExpression)
+Form
+  = List
+  / Vector
+  / Map
+  / Set
+  / ReaderMacro
+  / Literal
+  / Symbol
 
-BuiltInExpression = (IfExpression / LetExpression)
-
-IfExpression = "(" _? "if" _ c:Expression tr:Expression fl:Expression _? ")" _?
-{
-	return {
-    	type: "expression",
-        id: "if",
-        preset: true,
-        condition: c,
-        true_exp: tr,
-        false_exp: fl
-    };
-}
-
-LetExpression = "(" _? "let" _? "[" _? b:Binding+ "]" _? e:Expression* _? ")" _?
-{
-	return {
-    	type: "expression",
-        id: "let",
-        preset: true,
-        bindings: b,
-        exp: e
-    };
-}
-
-DefExpression = "(" _? "def" _?  i:Identifier _? d:DocString? _? p:Params _? e:Expression+ _? ")" _?
-{
-	return {
-    	type: "def_expression",
-        id: i,
-        doc: d,
-        params: p,
-        exp: e
-    };
-}
-
-DocString = '"' d:[^"]+ '"'
-{
-	return d.join("");
-}
-
-Params = _? "[" _? i:Identifier* _? "]" _?
-{
-	return i;
-}
-
-Binding = i:Identifier _ e:Expression _?
-{
-	return {
-    	type: "binding",
-        id: i,
-        exp: e
-    };	
-}
-
-FuncExpression = "(" _ func:(Identifier/Operator) args:Expression* ")" _?
-{
-	var preset = false;
-    
-    if (func.type === "operator") {
-    	preset = true;
-        func = func.id;
+List
+  = "(" _ forms:(Form _)* ")" {
+      return { type: "list", value: forms.map(f => f[0]) };
     }
-    
-    if (reserved_keywords.includes(func)) {
-    	error("Invalid use of keyword");
+
+Vector
+  = "[" _ forms:(Form _)* "]" {
+      return { type: "vector", value: forms.map(f => f[0]) };
     }
-	if (builtins.includes(func)) {
-    	preset = true;
+
+Map
+  = "{" _ pairs:(MapPair _)* "}" {
+      return { type: "map", value: pairs.map(p => p[0]) };
     }
-    
-	return {
-    	type: "expression",
-    	id: func,
-        preset: preset,
-        args: args
-    };
-} / QuotedExpression
 
-QuotedExpression = "'(" exp:Vector+ ")" _?
-{
-	return {
-    	type: "quoted_expression",
-        exp: exp
-    };
-} / Vector
+MapPair
+  = key:Form _ value:Form {
+      return { key: key, value: value };
+    }
 
-Operator = o:("+"/"-"/"*"/"/"/"^") _?
-{
-	return {
-    	type: "operator",
-        id: o
-	};        
-}
+Set
+  = "#{" _ forms:(Form _)* "}" {
+      return { type: "set", value: forms.map(f => f[0]) };
+    }
 
-Vector = "[" v:Vector+ "]" _? 
-{
-	return {
-    	type: "vector",
-        exp: v
-    };
-} / Set 
+ReaderMacro
+  = UnquoteSplice
+  / Quote
+  / Deref
+  / Meta
+  / SyntaxQuote
+  / Unquote
+  / Dispatch
 
-Set = "#{" v:Vector+ "}" _?
-{
-	return {
-    	type: "set",
-        exp: v
-    };
-} / Keyword / Local / Literal
-    
-Keyword = ":" i:Identifier _?
-{
-	return {
-    	type: "keyword",
-        name: i
-    };
-}
+Quote
+  = "'" _ form:Form {
+      return { type: "quote", value: form };
+    }
 
-Local = i:Identifier _? 
-{
-	return {
-    	type: "local",
-        name: i
-    };
-}
+Deref
+  = "@" _ form:Form {
+      return { type: "deref", value: form };
+    }
 
-Literal = l:(NumberLiteral / StringLiteral) _?
-{
-	return l;
-}
+Meta
+  = "^" _ metadata:Form _ form:Form {
+      return { type: "meta", metadata: metadata, value: form };
+    }
 
-NumberLiteral
-= "-"? DecimalIntegerLiteral "." DecimalDigit* {
-	return { type: "FloatLiteral", value: parseFloat(text()) };
-}
-/ "." DecimalDigit+ {
-	return { type: "FloatLiteral", value: parseFloat(text()) };
-}
-/ "-"? DecimalIntegerLiteral { 
-	return { type: "IntLiteral", value: parseInt(text()) };
-}
+Dispatch
+  = "#'" _ form:Form {
+      return { type: "var-quote", value: form };
+    }
+  / "#(" _ forms:(Form _)* ")" {
+      return { type: "fn", value: forms.map(f => f[0]) };
+    }
+  / "#_" _ form:Form {
+      return { type: "discard", value: form };
+    }
 
-DecimalIntegerLiteral
-    = "0"
-    / NonZeroDigit DecimalDigit*
+SyntaxQuote
+  = "`" _ form:Form {
+      return { type: "syntax-quote", value: form };
+    }
 
-DecimalDigit
-    = [0-9]
+Unquote
+  = "~" !"@" _ form:Form {
+      return { type: "unquote", value: form };
+    }
 
-NonZeroDigit
-    = [1-9]
+UnquoteSplice
+  = "~@" _ form:Form {
+      return { type: "unquote-splicing", value: form };
+    }
 
-StringLiteral = _? '"' val:[^"]* '"' _?
-{ 
-	return {
-      type: 'StringLiteral',
-      value: val.join("") 
-    };
-}
+Literal
+  = Number
+  / Nil
+  / Boolean
+  / Keyword
+  / String
+  / Character
 
+Nil
+  = "nil" !SymbolContinue {
+      return { type: "nil", value: null };
+    }
 
-Identifier = f:fla g:a* _?
-{
-	var id = f;
-    
+Boolean
+  = "true" !SymbolContinue {
+      return { type: "boolean", value: true };
+    }
+  / "false" !SymbolContinue {
+      return { type: "boolean", value: false };
+    }
 
-	if (g.length > 0)
-		id = id + g.join("");
+Keyword
+  = "::" name:SymbolName {
+      return { type: "keyword", value: "::" + name, auto: true };
+    }
+  / ":" name:SymbolName {
+      return { type: "keyword", value: ":" + name };
+    }
 
-	return id;
-}
+String
+  = '"' chars:StringChar* '"' {
+      return { type: "string", value: chars.join("") };
+    }
 
-fla "first letter" = [a-zA-ZÀ-꓆]
-a "letter" = [a-zA-ZÀ-꓆0-9-]
+StringChar
+  = "\\" char:EscapeSequence { return char; }
+  / [^"\\]
 
-_ "whitespace"
-	= [ \t\n\r]*
+EscapeSequence
+  = "n" { return "\n"; }
+  / "t" { return "\t"; }
+  / "r" { return "\r"; }
+  / '"' { return '"'; }
+  / "\\" { return "\\"; }
+  / char:. { return char; }
+
+Character
+  = "\\" name:CharacterName {
+      return { type: "character", value: name };
+    }
+
+CharacterName
+  = "newline" { return "\n"; }
+  / "space" { return " "; }
+  / "tab" { return "\t"; }
+  / "return" { return "\r"; }
+  / char:. { return char; }
+
+Number
+  = Ratio
+  / Float
+  / Integer
+
+Float
+  = sign:"-"? digits:[0-9]+ "." decimals:[0-9]+ exp:([eE] "-"? [0-9]+)? {
+      const numStr = (sign || "") + digits.join("") + "." + decimals.join("") + (exp ? exp.flat().join("") : "");
+      return { type: "float", value: parseFloat(numStr) };
+    }
+
+Integer
+  = sign:"-"? digits:[0-9]+ !SymbolContinue {
+      return { type: "integer", value: parseInt((sign || "") + digits.join(""), 10) };
+    }
+
+Ratio
+  = sign:"-"? num:[0-9]+ "/" denom:[0-9]+ {
+      return { 
+        type: "ratio", 
+        numerator: parseInt((sign || "") + num.join(""), 10), 
+        denominator: parseInt(denom.join(""), 10) 
+      };
+    }
+
+Symbol
+  = name:SymbolName {
+      return { type: "symbol", value: name };
+    }
+
+SymbolName
+  = ns:SymbolStart chars:SymbolContinue* "/" name:SymbolStart rest:SymbolContinue* {
+      return ns + chars.join("") + "/" + name + rest.join("");
+    }
+  / start:SymbolStart chars:SymbolContinue* {
+      return start + chars.join("");
+    }
+
+SymbolStart
+  = [a-zA-Z] 
+  / [+*!?$%&=<>_]
+  / "-" ![0-9]
+  / "/"
+
+SymbolContinue
+  = [a-zA-Z0-9+*!?$%&=<>_:#'.\-/]
+
+// Whitespace and Comments
+_
+  = (Whitespace / Comment)*
+
+Whitespace
+  = [ \t\n\r,]
+
+Comment
+  = ";" [^\n]* "\n"?
+
+EOF
+  = !.

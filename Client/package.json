@@ -20,6 +20,6 @@
   },
   "devDependencies": {
     "fs-extra": "^11.1.1",
-    "peggy": "^4.0.3"
+    "peggy": "5.0.6"
   }
 }
