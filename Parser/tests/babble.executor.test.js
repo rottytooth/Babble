@@ -38,6 +38,10 @@ function loadBabbleModules() {
             clearInterval: clearInterval
         };
         
+        // IMPORTANT: The parser wraps itself in (function(root) {...})(this)
+        // In vm.runInNewContext, 'this' is the context object itself
+        // So we don't need to do anything special - it will work automatically
+        
         // Load parser
         const parserCode = fs.readFileSync(parserPath, 'utf8');
         vm.runInNewContext(parserCode, context);
@@ -237,5 +241,259 @@ describe('babble.executor.ex()', () => {
         // Restore
         babble.parser.parse = originalParse;
         if (originalAnalyze) babble.analyzer.analyze = originalAnalyze;
+    });
+
+    test('should parse simple expression with newlines', () => {
+        // Verifies that the parser correctly handles newlines within expressions.
+        // The PEG grammar's Whitespace rule includes \n: [ \t\n\r,]
+        const code = '(+\n  1\n  2)';
+        
+        let ast;
+        try {
+            ast = babble.parser.parse(code);
+        } catch (error) {
+            console.error('Parser error:', error.message);
+            if (error.location) {
+                console.error('Location:', JSON.stringify(error.location));
+            }
+            throw error;
+        }
+        
+        // Should return an array with one list
+        expect(Array.isArray(ast)).toBe(true);
+        expect(ast.length).toBe(1);
+        
+        // The list should contain the symbol and numbers
+        expect(ast[0].type).toBe('list');
+        expect(ast[0].value.length).toBe(3); // +, 1, 2
+    });
+
+    test('should produce AST for nested let with defn', () => {
+        // This test verifies that the parser can handle complex multi-line expressions
+        // with nested function definitions, demonstrating that newlines are properly
+        // treated as whitespace throughout the expression.
+        const code = '(let []\n  (defn inner-fn [x]\n    (* x x))\n  (inner-fn 5))';
+        
+        let ast;
+        try {
+            // Call the real parser (not mocked)
+            ast = babble.parser.parse(code);
+        } catch (error) {
+            // Log the error to help diagnose
+            console.error('Parser error:', error.message);
+            if (error.location) {
+                console.error('Location:', error.location);
+            }
+            throw error;
+        }
+        
+        // Verify AST structure
+        expect(ast).toBeDefined();
+        expect(Array.isArray(ast)).toBe(true);
+        expect(ast.length).toBeGreaterThan(0);
+        
+        // The first element should be a 'let' expression
+        const letExpr = ast[0];
+        expect(letExpr.type).toBe('list');
+        expect(letExpr.value).toBeDefined();
+        expect(Array.isArray(letExpr.value)).toBe(true);
+        
+        // First element in the list should be the 'let' symbol
+        expect(letExpr.value[0]).toHaveProperty('type', 'symbol');
+        expect(letExpr.value[0]).toHaveProperty('value', 'let');
+        
+        // Second element should be the bindings vector
+        expect(letExpr.value[1]).toHaveProperty('type', 'vector');
+        expect(letExpr.value[1].value).toEqual([]); // Empty bindings
+        
+        // Third element should be defn (a list)
+        expect(letExpr.value[2]).toHaveProperty('type', 'list');
+        
+        // Fourth element should be the function call (also a list)
+        expect(letExpr.value[3]).toHaveProperty('type', 'list');
+    });
+});
+
+// ============================================================================
+// ANALYZER TESTS FOR DEF, DEFN, AND DEFINE
+// ============================================================================
+
+describe('babble.analyzer def/defn/define validation', () => {
+    
+    describe('def validation', () => {
+        test('should accept valid def with value', () => {
+            const code = '(def x 42)';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            
+            // Debug output
+            if (result.status !== 'success') {
+                console.log('Result:', JSON.stringify(result, null, 2));
+            }
+            
+            expect(result.status).toBe('success');
+        });
+        
+        test('should accept valid def with docstring and value', () => {
+            const code = '(def x "my variable" 42)';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('success');
+        });
+        
+        test('should reject def with no value', () => {
+            const code = '(def x)';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('error');
+            expect(result.message).toContain('requires at least 2 arguments');
+        });
+        
+        test('should reject def with too many arguments', () => {
+            const code = '(def x "doc" 42 extra)';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('error');
+            expect(result.message).toContain('accepts at most 3 arguments');
+        });
+        
+        test('should reject def with non-string docstring', () => {
+            const code = '(def x 123 42)';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('error');
+            expect(result.message).toContain('docstring must be a string');
+        });
+        
+        test('should reject def at non-top-level', () => {
+            const code = '(let [] (def x 42))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('error');
+            expect(result.message).toContain('can only be used at the top level');
+        });
+    });
+    
+    describe('defn validation', () => {
+        test('should accept valid single-arity defn', () => {
+            const code = '(defn square [x] (* x x))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('success');
+        });
+        
+        test('should accept defn with docstring', () => {
+            const code = '(defn square "Squares a number" [x] (* x x))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('success');
+        });
+        
+        test('should accept multi-arity defn', () => {
+            const code = '(defn add ([x] x) ([x y] (+ x y)) ([x y z] (+ x y z)))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('success');
+        });
+        
+        test('should accept multi-arity defn with docstring', () => {
+            const code = '(defn add "Adds numbers" ([x] x) ([x y] (+ x y)))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('success');
+        });
+        
+        test('should reject defn without parameters', () => {
+            const code = '(defn foo)';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('error');
+            expect(result.message).toContain('requires at least 2 arguments');
+        });
+        
+        test('should reject defn without body', () => {
+            const code = '(defn foo [x])';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('error');
+            expect(result.message).toContain('requires at least one body expression');
+        });
+        
+        test('should reject defn with non-vector params', () => {
+            const code = '(defn foo (x y) (+ x y))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('error');
+            // When params are not a vector, it's treated as multi-arity with invalid clause
+            expect(result.message).toContain('arity clause must start with a parameter vector');
+        });
+        
+        test('should reject multi-arity defn with duplicate arities', () => {
+            const code = '(defn add ([x y] (+ x y)) ([a b] (* a b)))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('error');
+            expect(result.message).toContain('duplicate arity');
+        });
+        
+        test('should reject defn at non-top-level', () => {
+            const code = '(let [] (defn foo [x] x))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('error');
+            expect(result.message).toContain('can only be used at the top level');
+        });
+    });
+    
+    describe('define validation', () => {
+        test('should accept define as def', () => {
+            const code = '(define x 42)';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('success');
+        });
+        
+        test('should accept define as def with docstring', () => {
+            const code = '(define x "my variable" 42)';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('success');
+        });
+        
+        test('should accept define as defn', () => {
+            const code = '(define square [x] (* x x))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('success');
+        });
+        
+        test('should accept define as defn with docstring', () => {
+            const code = '(define square "Squares a number" [x] (* x x))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('success');
+        });
+        
+        test('should accept define as multi-arity defn', () => {
+            const code = '(define add ([x] x) ([x y] (+ x y)))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            
+            // Debug output
+            if (result.status !== 'success') {
+                console.log('Result:', JSON.stringify(result, null, 2));
+                console.log('AST:', JSON.stringify(ast, null, 2));
+            }
+            
+            expect(result.status).toBe('success');
+        });
+        
+        test('should reject define at non-top-level', () => {
+            const code = '(let [] (define x 42))';
+            const ast = babble.parser.parse(code);
+            const result = babble.analyzer.analyze(ast);
+            expect(result.status).toBe('error');
+            expect(result.message).toContain('can only be used at the top level');
+        });
     });
 });

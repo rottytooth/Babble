@@ -88,16 +88,23 @@ babble.analyzer = {
           
         case 'deref':
         case 'var':
+        case 'var-quote':
           this.analyzeForm(form.value, context, errors, warnings);
           break;
           
+        case 'meta':
         case 'with-meta':
-          this.analyzeForm(form.meta, context, errors, warnings);
+          this.analyzeForm(form.meta || form.metadata, context, errors, warnings);
           this.analyzeForm(form.value, context, errors, warnings);
           break;
           
+        case 'fn':
         case 'anonymous-function':
           this.analyzeAnonymousFunction(form, context, errors, warnings);
+          break;
+          
+        case 'discard':
+          // Discarded forms are not evaluated
           break;
           
         case 'symbol':
@@ -110,6 +117,8 @@ babble.analyzer = {
           
         // Literals don't need semantic analysis
         case 'number':
+        case 'integer':
+        case 'float':
         case 'string':
         case 'character':
         case 'boolean':
@@ -136,13 +145,18 @@ babble.analyzer = {
       if (first.type === 'symbol') {
         const op = first.value;
         
-        // Check for def/defn at non-top-level
-        if ((op === 'def' || op === 'defn') && !context.isTopLevel) {
+        // Check for def/defn/define at non-top-level
+        if ((op === 'def' || op === 'defn' || op === 'define') && !context.isTopLevel) {
           errors.push(`'${op}' can only be used at the top level, not inside other forms`);
           return;
         }
         
         switch (op) {
+          case 'define':
+            // 'define' can be either def or defn based on its structure
+            this.analyzeDefine(form, context, errors, warnings);
+            break;
+            
           case 'def':
             this.analyzeDef(form, context, errors, warnings);
             break;
@@ -202,58 +216,134 @@ babble.analyzer = {
       }
     },
     
-    analyzeDef(form, context, errors, warnings) {
-      if (form.value.length < 2 || form.value.length > 3) {
-        errors.push(`'def' requires 1 or 2 arguments (name and optional init), got ${form.value.length - 1}`);
+    analyzeDefine(form, context, errors, warnings) {
+      // 'define' can be either 'def' or 'defn' based on its structure
+      // If any element after name (skipping optional docstring) is a vector or list, it's a defn
+      // Otherwise, it's a def
+      
+      if (form.value.length < 3) {
+        errors.push(`'define' requires at least 2 arguments, got ${form.value.length - 1}`);
         return;
       }
       
       const name = form.value[1];
       if (name.type !== 'symbol') {
-        errors.push(`'def' name must be a symbol, got ${name.type}`);
+        errors.push(`'define' name must be a symbol, got ${name.type}`);
         return;
       }
       
-      if (form.value.length === 3) {
+      let checkIndex = 2;
+      
+      // Skip docstring if present
+      if (form.value[checkIndex] && form.value[checkIndex].type === 'string') {
+        checkIndex = 3;
+        if (form.value.length <= checkIndex) {
+          errors.push(`'define' with docstring requires additional arguments`);
+          return;
+        }
+      }
+      
+      // Check if it's a defn (has parameter vector or multi-arity lists) or def (has value)
+      const nextElement = form.value[checkIndex];
+      if (nextElement && (nextElement.type === 'vector' || nextElement.type === 'list')) {
+        // It's a defn - delegate to analyzeDefn
+        this.analyzeDefn(form, context, errors, warnings);
+      } else {
+        // It's a def - delegate to analyzeDef
+        this.analyzeDef(form, context, errors, warnings);
+      }
+    },
+    
+    analyzeDef(form, context, errors, warnings) {
+      // Valid forms:
+      // (def name value)
+      // (def name "docstring" value)
+      
+      const opName = form.value[0].value; // 'def' or 'define'
+      
+      if (form.value.length < 3) {
+        errors.push(`'${opName}' requires at least 2 arguments (name and value), got ${form.value.length - 1}`);
+        return;
+      }
+      
+      if (form.value.length > 4) {
+        errors.push(`'${opName}' accepts at most 3 arguments (name, optional docstring, and value), got ${form.value.length - 1}`);
+        return;
+      }
+      
+      const name = form.value[1];
+      if (name.type !== 'symbol') {
+        errors.push(`'${opName}' name must be a symbol, got ${name.type}`);
+        return;
+      }
+      
+      // Check for docstring
+      if (form.value.length === 4) {
+        const docstring = form.value[2];
+        if (docstring.type !== 'string') {
+          errors.push(`'${opName}' docstring must be a string, got ${docstring.type}`);
+          return;
+        }
+        // Analyze the value (4th element)
+        this.analyzeForm(form.value[3], { ...context, isTopLevel: false, inDefinition: true }, errors, warnings);
+      } else {
+        // Analyze the value (3rd element)
         this.analyzeForm(form.value[2], { ...context, isTopLevel: false, inDefinition: true }, errors, warnings);
       }
     },
     
     analyzeDefn(form, context, errors, warnings) {
+      // Valid forms:
+      // (defn name [params] body...)
+      // (defn name "docstring" [params] body...)
+      // (defn name ([params1] body1...) ([params2] body2...) ...) - multi-arity
+      // (defn name "docstring" ([params1] body1...) ([params2] body2...) ...) - multi-arity with docstring
+      
+      const opName = form.value[0].value; // 'defn' or 'define'
+      
       if (form.value.length < 3) {
-        errors.push(`'defn' requires at least 2 arguments (name and params), got ${form.value.length - 1}`);
+        errors.push(`'${opName}' requires at least 2 arguments (name and params/body), got ${form.value.length - 1}`);
         return;
       }
       
       const name = form.value[1];
       if (name.type !== 'symbol') {
-        errors.push(`'defn' name must be a symbol, got ${name.type}`);
+        errors.push(`'${opName}' name must be a symbol, got ${name.type}`);
         return;
       }
       
       let bodyStart = 2;
       
       // Check for docstring
-      if (form.value[2].type === 'string') {
+      if (form.value[2] && form.value[2].type === 'string') {
         bodyStart = 3;
         if (form.value.length < 4) {
-          errors.push(`'defn' with docstring requires parameter vector`);
+          errors.push(`'${opName}' with docstring requires parameter vector or arity clauses`);
           return;
         }
       }
       
-      // Check for metadata map
-      if (form.value[bodyStart].type === 'map') {
-        bodyStart++;
-        if (form.value.length <= bodyStart) {
-          errors.push(`'defn' with metadata requires parameter vector`);
-          return;
-        }
+      // Check if multi-arity (next element is a list, not a vector)
+      if (form.value[bodyStart] && form.value[bodyStart].type === 'list') {
+        // Multi-arity function
+        this.analyzeMultiArityDefn(form, bodyStart, context, errors, warnings);
+      } else {
+        // Single-arity function
+        this.analyzeSingleArityDefn(form, bodyStart, context, errors, warnings);
       }
-      
+    },
+    
+    analyzeSingleArityDefn(form, bodyStart, context, errors, warnings) {
+      const opName = form.value[0].value;
       const params = form.value[bodyStart];
+      
+      if (!params) {
+        errors.push(`'${opName}' requires parameter vector`);
+        return;
+      }
+      
       if (params.type !== 'vector') {
-        errors.push(`'defn' parameter list must be a vector, got ${params.type}`);
+        errors.push(`'${opName}' parameter list must be a vector, got ${params.type}`);
         return;
       }
       
@@ -265,9 +355,15 @@ babble.analyzer = {
             errors.push(`Duplicate parameter name: ${param.value}`);
           }
           paramNames.add(param.value);
-        } else if (param.type !== 'keyword') { // & rest-params use keywords sometimes
+        } else if (param.value !== '&') { // & for rest params
           errors.push(`Parameter must be a symbol, got ${param.type}`);
         }
+      }
+      
+      // Ensure there's at least one body expression
+      if (form.value.length <= bodyStart + 1) {
+        errors.push(`'${opName}' requires at least one body expression`);
+        return;
       }
       
       // Analyze body with parameters in scope
@@ -281,6 +377,71 @@ babble.analyzer = {
       
       for (let i = bodyStart + 1; i < form.value.length; i++) {
         this.analyzeForm(form.value[i], newContext, errors, warnings);
+      }
+    },
+    
+    analyzeMultiArityDefn(form, bodyStart, context, errors, warnings) {
+      const opName = form.value[0].value;
+      const arities = new Set();
+      
+      // Each element from bodyStart onward should be an arity clause
+      for (let i = bodyStart; i < form.value.length; i++) {
+        const clause = form.value[i];
+        
+        if (clause.type !== 'list') {
+          errors.push(`'${opName}' multi-arity clause must be a list, got ${clause.type}`);
+          continue;
+        }
+        
+        if (!clause.value || clause.value.length < 1) {
+          errors.push(`'${opName}' arity clause must have at least a parameter vector`);
+          continue;
+        }
+        
+        const params = clause.value[0];
+        if (params.type !== 'vector') {
+          errors.push(`'${opName}' arity clause must start with a parameter vector, got ${params.type}`);
+          continue;
+        }
+        
+        // Check for duplicate arities
+        const arity = params.value.length;
+        if (arities.has(arity)) {
+          errors.push(`'${opName}' has duplicate arity: ${arity} parameters`);
+        }
+        arities.add(arity);
+        
+        // Collect parameter names
+        const paramNames = new Set();
+        for (const param of params.value) {
+          if (param.type === 'symbol') {
+            if (paramNames.has(param.value)) {
+              errors.push(`Duplicate parameter name in arity clause: ${param.value}`);
+            }
+            paramNames.add(param.value);
+          } else if (param.value !== '&') {
+            errors.push(`Parameter must be a symbol, got ${param.type}`);
+          }
+        }
+        
+        // Ensure there's at least one body expression
+        if (clause.value.length < 2) {
+          errors.push(`'${opName}' arity clause requires at least one body expression`);
+          continue;
+        }
+        
+        // Analyze body with parameters in scope
+        const newContext = {
+          ...context,
+          isTopLevel: false,
+          inDefinition: true,
+          boundVars: new Set([...context.boundVars, ...paramNames]),
+          inLoop: false
+        };
+        
+        for (let j = 1; j < clause.value.length; j++) {
+          this.analyzeForm(clause.value[j], newContext, errors, warnings);
+        }
       }
     },
     

@@ -93,6 +93,20 @@ const processLine = () => {
     if (!userInput) return; // Safety check
     
     let line = userInput.innerText;
+    
+    // DEBUG: Log the raw string and its character codes
+    // console.log('Raw input:', JSON.stringify(line));
+    // console.log('Char codes:', [...line].map(c => c.charCodeAt(0)).join(','));
+    
+    // Normalize whitespace: replace non-breaking spaces and other unicode spaces with regular spaces
+    // This is important for contenteditable elements which may insert &nbsp; or other space chars
+    line = line.replace(/\u00A0/g, ' ')  // non-breaking space
+               .replace(/\u2003/g, ' ')  // em space
+               .replace(/\u2002/g, ' ')  // en space
+               .replace(/\u2009/g, ' ')  // thin space
+               .replace(/\u200B/g, '');  // zero-width space
+    
+    // Trim leading/trailing whitespace but preserve internal newlines and spaces
     line = line.trim();
 
     if (line.length === 0) {
