@@ -9,4 +9,6 @@ public class TermDefinition
     public string? Creator { get; set; }
     public string? IPAddr { get; set; }
     public string? Doc { get; set; }
+    public string? BuiltIns { get; set; }
+    public string? Symbols { get; set; }
 }

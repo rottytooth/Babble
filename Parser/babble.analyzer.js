@@ -2,6 +2,11 @@ babble.analyzer = {
     analyze(ast) {
       const errors = [];
       const warnings = [];
+      const symbolInfo = {
+        builtIns: new Set(),
+        locallyDefined: new Set(),
+        unknowns: new Set()
+      };
       
       // Analyze each top-level form
       if (Array.isArray(ast)) {
@@ -10,7 +15,8 @@ babble.analyzer = {
             isTopLevel: true, 
             inDefinition: false,
             boundVars: new Set(),
-            formIndex: idx 
+            formIndex: idx,
+            symbolInfo: symbolInfo
           }, errors, warnings);
         });
       } else {
@@ -18,7 +24,8 @@ babble.analyzer = {
           isTopLevel: true, 
           inDefinition: false,
           boundVars: new Set(),
-          formIndex: 0 
+          formIndex: 0,
+          symbolInfo: symbolInfo
         }, errors, warnings);
       }
       
@@ -28,7 +35,12 @@ babble.analyzer = {
           message: errors.join('\n'),
           errors: errors,
           warnings: warnings,
-          ast: ast
+          ast: ast,
+          symbols: {
+            builtIns: Array.from(symbolInfo.builtIns),
+            locallyDefined: Array.from(symbolInfo.locallyDefined),
+            unknowns: Array.from(symbolInfo.unknowns)
+          }
         };
       }
       
@@ -38,7 +50,12 @@ babble.analyzer = {
           message: warnings.join('\n'),
           errors: [],
           warnings: warnings,
-          ast: ast
+          ast: ast,
+          symbols: {
+            builtIns: Array.from(symbolInfo.builtIns),
+            locallyDefined: Array.from(symbolInfo.locallyDefined),
+            unknowns: Array.from(symbolInfo.unknowns)
+          }
         };
       }
       
@@ -47,7 +64,12 @@ babble.analyzer = {
         message: 'Analysis completed successfully',
         errors: [],
         warnings: [],
-        ast: ast
+        ast: ast,
+        symbols: {
+          builtIns: Array.from(symbolInfo.builtIns),
+          locallyDefined: Array.from(symbolInfo.locallyDefined),
+          unknowns: Array.from(symbolInfo.unknowns)
+        }
       };
     },
     
@@ -677,14 +699,33 @@ babble.analyzer = {
         return;
       }
       
-      // This is a simplified check - a real analyzer would have a symbol table
-      if (!context.boundVars.has(name) && !this.isBuiltIn(name)) {
+      // Determine symbol classification and mark it in the AST
+      if (context.boundVars.has(name)) {
+        // Locally defined (parameter, let binding, etc.)
+        form.symbolType = 'local';
+        if (context.symbolInfo) {
+          context.symbolInfo.locallyDefined.add(name);
+        }
+      } else if (this.isBuiltIn(name)) {
+        // Built-in function or special form
+        form.symbolType = 'builtin';
+        if (context.symbolInfo) {
+          context.symbolInfo.builtIns.add(name);
+        }
+      } else {
+        // Unknown - possibly user-defined or undefined
+        form.symbolType = 'unknown';
+        if (context.symbolInfo) {
+          context.symbolInfo.unknowns.add(name);
+        }
         // This is just a warning since we don't have full context
         // warnings.push(`Possibly undefined var: ${name}`);
       }
     },
     
     isBuiltIn(name) {
+      //FIXME: This should use keyword list from SemanticInterpreter.cs
+
       // Common Clojure built-ins
       const builtins = new Set([
         '+', '-', '*', '/', '=', '<', '>', '<=', '>=',

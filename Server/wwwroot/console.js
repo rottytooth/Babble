@@ -5,7 +5,8 @@ let line_history = 0;
 // Focus the input when page loads
 window.addEventListener('load', () => {
     const userInput = document.getElementById("userInput");
-    userInput.focus();
+    if (userInput)
+        userInput.focus();
 });
 
 // Handle clicks anywhere in the document to focus the current input

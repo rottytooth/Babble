@@ -12,9 +12,14 @@ public class LexiconDao : IDisposable
     const string ResolveDocQuery = "SELECT Doc FROM Term WHERE Name=@name;";
 
     const string InsertQuery = @"INSERT INTO Term 
-        (Name, Params, ParamNum, Definition, Line, Creator, IPAddr, Doc) 
+        (Name, Params, ParamNum, Definition, Line, Creator, IPAddr, Doc, BuiltIns, Symbols) 
         VALUES 
-        (@name, @params, @paramcount, @def, @line, @creator, @ipaddr, @doc);";
+        (@name, @params, @paramcount, @def, @line, @creator, @ipaddr, @doc, @builtins, @symbols);";
+
+    const string InsertDependencyQuery = @"INSERT INTO TermDependency 
+        (TermID, DependentTermID) 
+        VALUES 
+        (@termid, @dependenttermid);";
 
     public LexiconDao()
     {
@@ -107,6 +112,29 @@ public class LexiconDao : IDisposable
         }
     }
 
+    public async Task<string> ResolveAll(string[] termNames)
+    {
+        var results = new List<object>();
+        
+        foreach (var termName in termNames)
+        {
+            using var command = _connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM Term WHERE Name = @name;";
+            command.Parameters.AddWithValue("@name", termName);
+            
+            var count = await command.ExecuteScalarAsync();
+            var exists = Convert.ToInt32(count) > 0;
+            
+            results.Add(new
+            {
+                name = termName,
+                exists = exists
+            });
+        }
+        
+        return System.Text.Json.JsonSerializer.Serialize(results);
+    }
+
     public async Task<string> Assign(TermDefinition termdef)
     {
         string parameters;
@@ -133,11 +161,72 @@ public class LexiconDao : IDisposable
         command.Parameters.AddWithValue("@creator", termdef.Creator ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@ipaddr", termdef.IPAddr ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@doc", termdef.Doc ?? (object)DBNull.Value);
-
+        command.Parameters.AddWithValue("@builtins", termdef.BuiltIns ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@symbols", termdef.Symbols ?? (object)DBNull.Value);
         try
         {
             var result = await command.ExecuteNonQueryAsync();
             Console.WriteLine($"Inserted {result} row(s)");
+            
+            // Get the ID of the newly inserted Term
+            long newTermId;
+            using (var idCommand = _connection.CreateCommand())
+            {
+                idCommand.CommandText = "SELECT last_insert_rowid();";
+                var idResult = await idCommand.ExecuteScalarAsync();
+                newTermId = Convert.ToInt64(idResult);
+            }
+            Console.WriteLine($"New Term ID: {newTermId}");
+            
+            // Add TermDependency entries for each symbol in the Symbols field
+            if (!string.IsNullOrEmpty(termdef.Symbols) && termdef.Symbols != "[]")
+            {
+                try
+                {
+                    var symbols = System.Text.Json.JsonSerializer.Deserialize<string[]>(termdef.Symbols);
+                    if (symbols != null && symbols.Length > 0)
+                    {
+                        foreach (var symbolName in symbols)
+                        {
+                            // Find the Term ID for this symbol name
+                            using var lookupCommand = _connection.CreateCommand();
+                            lookupCommand.CommandText = "SELECT ID FROM Term WHERE Name = @name LIMIT 1;";
+                            lookupCommand.Parameters.AddWithValue("@name", symbolName);
+                            
+                            var dependentTermId = await lookupCommand.ExecuteScalarAsync();
+                            
+                            if (dependentTermId != null)
+                            {
+                                // Insert the dependency relationship
+                                using var depCommand = _connection.CreateCommand();
+                                depCommand.CommandText = InsertDependencyQuery;
+                                depCommand.Parameters.AddWithValue("@termid", newTermId);
+                                depCommand.Parameters.AddWithValue("@dependenttermid", dependentTermId);
+                                
+                                try
+                                {
+                                    await depCommand.ExecuteNonQueryAsync();
+                                    Console.WriteLine($"Added dependency: Term {newTermId} depends on Term {dependentTermId} ({symbolName})");
+                                }
+                                catch (SqliteException depEx) when (depEx.SqliteErrorCode == SQLitePCL.raw.SQLITE_CONSTRAINT)
+                                {
+                                    // Duplicate dependency entry, ignore
+                                    Console.WriteLine($"Dependency already exists: {newTermId} -> {dependentTermId}");
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Warning: Symbol '{symbolName}' not found in Term table, skipping dependency");
+                            }
+                        }
+                    }
+                }
+                catch (System.Text.Json.JsonException jsonEx)
+                {
+                    Console.WriteLine($"Warning: Could not parse Symbols JSON: {jsonEx.Message}");
+                }
+            }
+            
             return "{\"complete\": true}";
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == SQLitePCL.raw.SQLITE_CONSTRAINT)
@@ -155,11 +244,10 @@ public class LexiconDao : IDisposable
             using var reader = await resolveCommand.ExecuteReaderAsync();
             if (await reader.ReadAsync())
             {
-                var oldLine = reader["Line"]?.ToString() ?? "";
-                throw new LexicalException($"Term already exists: {oldLine}");
+                throw new AlreadyAssignedException(reader["Line"]?.ToString() ?? "");
             }
-            
-            throw new LexicalException($"Term '{termdef.Term}' already exists");
+
+            throw new AlreadyAssignedException();
         }
         catch (Exception ex)
         {

@@ -25,7 +25,7 @@
 
   <Target Name="CopyParserFiles" BeforeTargets="Build">
     <ItemGroup>
-      <ParserFiles Include="../Parser/**/*" />
+      <ParserFiles Include="../Parser/**/*" Exclude="../Parser/tests/**/*" />
     </ItemGroup>
     <Copy SourceFiles="@(ParserFiles)" DestinationFolder="wwwroot/parser/%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>

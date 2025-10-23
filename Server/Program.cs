@@ -60,6 +60,28 @@ app.MapGet("/resolve/{cmd_name}", async (string cmd_name, LexiconDao lexiconDao)
 })
 .WithName("ResolveTerm");
 
+app.MapGet("/resolve_all/{cmd_names}", async (string cmd_names, LexiconDao lexiconDao) =>
+{
+    try
+    {
+        // Split the comma-separated list of term names
+        var termNames = cmd_names.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        
+        if (termNames.Length == 0)
+        {
+            return Results.BadRequest(new { error = "No term names provided" });
+        }
+        
+        var result = await lexiconDao.ResolveAll(termNames);
+        return Results.Content(result, "application/json");
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"An error occurred while resolving terms: {ex.Message}");
+    }
+})
+.WithName("ResolveAllTerms");
+
 app.MapGet("/resolve/{cmd_name}/doc", async (string cmd_name, LexiconDao lexiconDao) =>
 {
     try
@@ -85,7 +107,8 @@ app.MapPost("/assign", async (TermDefinition termDefinition, LexiconDao lexiconD
         var result = await lexiconDao.Assign(termDefinition);
         return Results.Content(result, "application/json");
     }
-    catch (LexicalException ex)
+    // also should catch LexicalException
+    catch (AlreadyAssignedException ex)
     {
         //FIXME: This gets thrown for a lot of other reasons
         return Results.Conflict(new { error = ex.Message });

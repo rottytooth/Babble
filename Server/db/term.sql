@@ -1,4 +1,4 @@
-CREATE TABLE "Term" (
+(CREATE TABLE "Term" (
 	"ID"	INTEGER NOT NULL,
 	"Name"	TEXT NOT NULL,
 	"Params"	TEXT,
@@ -8,6 +8,8 @@ CREATE TABLE "Term" (
 	"Doc"	TEXT,
 	"Creator"	TEXT,
 	"IPAddr"	TEXT,
+	"BuiltIns"	TEXT,
+	"Symbols"	TEXT,
 	PRIMARY KEY("ID" AUTOINCREMENT),
 	UNIQUE("Name","ParamNum")
-)
+))
