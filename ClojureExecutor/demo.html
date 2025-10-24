@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babble ClojureScript Executor Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .demo-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .code-input {
+            width: 100%;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .output {
+            background: #f9f9f9;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #4CAF50;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .error {
+            border-left-color: #f44336;
+            color: #c62828;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            color: #2e7d32;
+        }
+        pre {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Babble ClojureScript Executor Demo</h1>
+    
+    <div class="demo-section">
+        <h2>Interactive ClojureScript Evaluator</h2>
+        <p>Enter ClojureScript code to evaluate:</p>
+        <textarea class="code-input" id="codeInput" rows="4" placeholder="(+ 1 2 3)&#10;(map inc [1 2 3])&#10;(reduce * [1 2 3 4 5])"></textarea>
+        <button onclick="evaluateCode()">Evaluate Code</button>
+        <div id="output"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>Pre-defined Examples</h2>
+        <button onclick="runExample('(+ 1 2 3)')">Simple Addition</button>
+        <button onclick="runExample('(map inc [1 2 3])')">Map Function</button>
+        <button onclick="runExample('(filter even? [1 2 3 4 5 6])')">Filter Function</button>
+        <button onclick="runExample('(reduce + [1 2 3 4 5])')">Reduce Function</button>
+        <button onclick="runExample('(def factorial (fn [n] (if (<= n 1) 1 (* n (factorial (dec n))))))(factorial 5)')">Factorial</button>
+        <div id="exampleOutput"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>EDN Data Reader</h2>
+        <p>Parse EDN data structures (no code evaluation):</p>
+        <textarea class="code-input" id="ednInput" rows="3" placeholder='{:name "Alice" :age 30 :hobbies ["reading" "coding"]}'></textarea>
+        <button onclick="readEDN()">Read EDN</button>
+        <div id="ednOutput"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🔒 Security Demo - SCI Sandboxing</h2>
+        <p>Try these "malicious" examples - they're all safely blocked by SCI:</p>
+        <button onclick="runExample('(js/alert &quot;hacked&quot;)')">Try js/alert (BLOCKED)</button>
+        <button onclick="runExample('(js/document.body.innerHTML &quot;pwned&quot;)')">Try DOM manipulation (BLOCKED)</button>
+        <button onclick="runExample('(js/fetch &quot;evil.com&quot;)')">Try fetch (BLOCKED)</button>
+        <button onclick="runExample('(js/eval &quot;1+1&quot;)')">Try js/eval (BLOCKED)</button>
+        <p style="color: #2e7d32; margin-top: 10px;">
+            <strong>✓ All dangerous operations are blocked!</strong><br>
+            SCI provides true sandboxing - user code cannot escape or access dangerous APIs.
+        </p>
+        <div id="exampleOutput"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>Custom Bindings</h2>
+        <p>Evaluate code with custom variables:</p>
+        <p>Code: <code>(+ x y z)</code> with bindings: <code>{x: 10, y: 20, z: 30}</code></p>
+        <button onclick="testBindings()">Test Custom Bindings</button>
+        <div id="bindingsOutput"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>About</h2>
+        <p>This demo shows the ClojureScript Executor's ability to evaluate ClojureScript code from JavaScript.</p>
+        <p><strong>🔒 Security:</strong> Uses <a href="https://github.com/babashka/sci" target="_blank">SCI (Small Clojure Interpreter)</a> for safe, sandboxed execution.</p>
+        <p><strong>Available Functions:</strong></p>
+        <ul>
+            <li><code>babble.core.eval_clojure(code)</code> - Evaluate ClojureScript code</li>
+            <li><code>babble.core.eval_clojure_safe(code)</code> - Safe evaluation (never throws)</li>
+            <li><code>babble.core.read_clojure(edn)</code> - Parse EDN data</li>
+        </ul>
+    </div>
+
+    <script src="/executor/main.js"></script>
+    <script>
+        function displayResult(elementId, result) {
+            const output = document.getElementById(elementId);
+            if (result.success) {
+                output.innerHTML = `<div class="output success"><strong>✓ Success</strong>\n<pre>${JSON.stringify(result.result, null, 2)}</pre></div>`;
+            } else {
+                output.innerHTML = `<div class="output error"><strong>✗ Error</strong>\n<pre>${result.error}</pre></div>`;
+            }
+        }
+
+        function evaluateCode() {
+            const code = document.getElementById('codeInput').value;
+            if (!code.trim()) {
+                alert('Please enter some code to evaluate');
+                return;
+            }
+            
+            console.log('Evaluating:', code);
+            const result = babble.core.eval_clojure_safe(code);
+            console.log('Result:', result);
+            displayResult('output', result);
+        }
+
+        function runExample(code) {
+            document.getElementById('codeInput').value = code;
+            const result = babble.core.eval_clojure_safe(code);
+            console.log('Example result:', result);
+            displayResult('exampleOutput', result);
+        }
+
+        function readEDN() {
+            const edn = document.getElementById('ednInput').value;
+            if (!edn.trim()) {
+                alert('Please enter some EDN data');
+                return;
+            }
+            
+            console.log('Reading EDN:', edn);
+            const result = babble.core.read_clojure(edn);
+            console.log('Parsed:', result);
+            displayResult('ednOutput', result);
+        }
+
+        function testBindings() {
+            const code = '(+ x y z)';
+            const bindings = {x: 10, y: 20, z: 30};
+            console.log('Evaluating with bindings:', code, bindings);
+            const result = babble.core.eval_with_bindings(code, bindings);
+            console.log('Result:', result);
+            displayResult('bindingsOutput', result);
+        }
+
+        // Run a simple test on load
+        window.addEventListener('load', () => {
+            console.log('Testing ClojureScript Executor...');
+            
+            // Test basic evaluation
+            const addResult = babble.core.eval_clojure_safe('(+ 1 2 3)');
+            console.log('Add test:', addResult);
+            
+            // Test map function
+            const mapResult = babble.core.eval_clojure_safe('(map inc [1 2 3])');
+            console.log('Map test:', mapResult);
+            
+            // Test EDN reading
+            const ednResult = babble.core.read_clojure('{:name "Test" :value 42}');
+            console.log('EDN test:', ednResult);
+            
+            console.log('ClojureScript Executor is ready! 🎉');
+        });
+    </script>
+</body>
+</html>

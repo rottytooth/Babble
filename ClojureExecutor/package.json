@@ -1,0 +1,26 @@
+{
+  "name": "babble-clojure-executor",
+  "version": "0.4.0",
+  "description": "ClojureScript executor component for Babble",
+  "main": "index.js",
+  "scripts": {
+    "watch": "shadow-cljs watch app",
+    "compile": "shadow-cljs compile app",
+    "release": "shadow-cljs release app",
+    "clean": "shadow-cljs clean",
+    "repl": "shadow-cljs cljs-repl app",
+    "server": "shadow-cljs server",
+    "test": "shadow-cljs compile test",
+    "test:watch": "shadow-cljs watch test"
+  },
+  "keywords": [
+    "clojurescript",
+    "babble"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "shadow-cljs": "^2.26.2"
+  },
+  "dependencies": {}
+}

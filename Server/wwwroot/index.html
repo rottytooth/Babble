@@ -3,11 +3,12 @@
 <head>
     <title>Babble Server</title>
     <link rel="stylesheet" href="console.css">
-    <script type="text/javascript">const babble = {};</script>
+    <script type="text/javascript">var babble = {};</script>
     <script src="parser/babble.parser.js"></script>
     <script src="parser/babble.analyzer.js"></script>
     <script src="parser/babble.code_emitter.js"></script>
     <script src="parser/babble.executor.js"></script>
+    <script src="executor/babble.core.js"></script>
     <script src="console.js"></script>
     <script>
         // Wait for DOM to be ready and then fetch version info
@@ -68,5 +69,10 @@
         (about) <span class='promptPrefix'>for more info</span><br/><br/>
         </span>
         <span id="typing"></span></div>
+        <script type="text/javascript">
+            var x = babble.core.eval_clojure_safe("(+ 1 2 3)");
+            if (x.success)
+                console.log(x.result);
+        </script>
 </body>
 </html>

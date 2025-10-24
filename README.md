@@ -8,7 +8,7 @@ The Babble server, web interface, and node-based interpreter (in progress).
 
 ## Architecture
 
-The project consists of three main components:
+The project consists of four main components:
 
 ### 🔧 Parser
 - **Language**: PEG.js grammar definition and executor
@@ -17,6 +17,8 @@ The project consists of three main components:
   - `babble.pegjs` - Grammar definition
   - `babble.parser.js` - Generated parser
   - `babble.executor.js` - Runtime executor
+  - `babble.analyzer.js` - AST analyzer
+  - `babble.code_emitter.js` - AST to code converter
 
 ### 🖥️ Server
 - **Language**: C# (.NET 9.0)
@@ -35,6 +37,15 @@ The project consists of three main components:
   - Command-line execution environment
   - Parser integration
 
+### ⚡ ClojureScript Executor
+- **Language**: ClojureScript
+- **Location**: `/ClojureExecutor/`
+- **Description**: ClojureScript-based execution engine compiled to JavaScript
+- **Features**:
+  - Functional programming utilities
+  - AST manipulation
+  - Browser-compatible JavaScript output
+
 > [!WARNING]
 > NOTE: If you make changes to the prgjs, you have to build the Client and then the Server!
 
@@ -44,7 +55,9 @@ The project consists of three main components:
 
 ### Prerequisites
 - .NET 9.0 SDK
-- Node.js (for client)
+- Node.js (for client and ClojureScript executor)
+- Java JDK 11+ (for ClojureScript compilation)
+- Clojure CLI tools (optional, for ClojureScript development)
 - Modern web browser
 
 ### Running the Server
@@ -86,6 +99,37 @@ dotnet build Babble.sln
 # Run specific project
 dotnet run --project Server/Babble.csproj
 ```
+
+### Building the ClojureScript Executor (Optional)
+
+The ClojureScript executor is automatically built when building the server, but you can also build it separately:
+
+1. **Install dependencies**:
+   ```bash
+   cd ClojureExecutor
+   npm install
+   ```
+
+2. **Build for development**:
+   ```bash
+   npm run compile
+   ```
+
+3. **Build for production**:
+   ```bash
+   npm run release
+   ```
+
+4. **Watch mode (auto-rebuild)**:
+   ```bash
+   npm run watch
+   ```
+
+The compiled JavaScript will be output to `Server/wwwroot/executor/` and automatically served by the server.
+
+The ClojureScript executor is automatically included in the main `index.html` page and provides safe, sandboxed ClojureScript evaluation accessible via `babble.core.eval_clojure_safe()`.
+
+For more details, see [ClojureExecutor/README.md](ClojureExecutor/README.md).
 
 ## License
 

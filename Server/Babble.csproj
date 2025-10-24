@@ -23,6 +23,32 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
   </ItemGroup>
 
+  <Target Name="BuildClojureExecutor" BeforeTargets="CopyParserFiles">
+    <!-- Check if npm is available -->
+    <Exec Command="npm --version" IgnoreExitCode="true" ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="NpmExitCode" />
+    </Exec>
+    
+    <!-- Only build ClojureScript if npm is available -->
+    <Exec Condition="'$(NpmExitCode)' == '0'" 
+          Command="npm run release" 
+          WorkingDirectory="../ClojureExecutor" 
+          IgnoreExitCode="true"
+          ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="ClojureExecutorBuildExitCode" />
+    </Exec>
+    
+    <Message Condition="'$(NpmExitCode)' != '0'" 
+             Text="Skipping ClojureScript Executor build: npm not found. Install Node.js and npm to enable ClojureScript compilation." 
+             Importance="high" />
+    <Message Condition="'$(NpmExitCode)' == '0' AND '$(ClojureExecutorBuildExitCode)' != '0'" 
+             Text="ClojureScript Executor build encountered issues but continuing. Check ClojureExecutor/README.md for setup instructions." 
+             Importance="high" />
+    <Message Condition="'$(ClojureExecutorBuildExitCode)' == '0'" 
+             Text="ClojureScript Executor compiled successfully to wwwroot/executor/" 
+             Importance="high" />
+  </Target>
+
   <Target Name="CopyParserFiles" BeforeTargets="Build">
     <ItemGroup>
       <ParserFiles Include="../Parser/**/*" Exclude="../Parser/tests/**/*" />
@@ -32,6 +58,10 @@
 
   <Target Name="CleanParserFiles" BeforeTargets="Clean">
     <RemoveDir Directories="wwwroot/parser" />
+  </Target>
+
+  <Target Name="CleanClojureExecutor" BeforeTargets="Clean">
+    <RemoveDir Directories="wwwroot/executor" />
   </Target>
 
 </Project>
