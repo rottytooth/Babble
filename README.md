@@ -6,6 +6,8 @@ The programming language where globals are truly global.
 
 The Babble server, web interface, and node-based interpreter (in progress).
 
+A Clojure-like LISP where `define` adds to the standard library, available to all other programmers immediately.
+
 ## Architecture
 
 The project consists of four main components:
@@ -25,14 +27,15 @@ The project consists of four main components:
 - **Location**: `/Server/`
 - **Description**: ASP.NET Core web application providing Babble execution environment and API
 - **Features**:
-  - Web-based console interface
-  - API for client
+  - API for lexicon, used by both Server and Client
   - Database for lexicon storage
+  - Web-based console interface
 
 ### 📱 Client
 - **Language**: Node.js
 - **Location**: `/Client/`
 - **Description**: Standalone Node.js application for running Babble code
+= **NOTE**: Still very much in progress, basically not functional atm
 - **Features**:
   - Command-line execution environment
   - Parser integration
@@ -41,13 +44,9 @@ The project consists of four main components:
 - **Language**: ClojureScript
 - **Location**: `/ClojureExecutor/`
 - **Description**: ClojureScript-based execution engine compiled to JavaScript
-- **Features**:
-  - Functional programming utilities
-  - AST manipulation
-  - Browser-compatible JavaScript output
 
 > [!WARNING]
-> NOTE: If you make changes to the prgjs, you have to build the Client and then the Server!
+> NOTE: If you make changes to the pegjs, you have to do a full build
 
 ## Language Features
 
@@ -78,58 +77,18 @@ The project consists of four main components:
    npm install
    ```
 
-2. **Build the parser**:
+2. **Build entire solution**:
    ```bash
-   npm run build
-   ```
-
-3. **Start the client**:
-   ```bash
-   npm start
-   ```
-
-### Building the Solution
-
-The project includes a Visual Studio solution file for easy development:
-
-```bash
-# Build entire solution
-dotnet build Babble.sln
-
-# Run specific project
-dotnet run --project Server/Babble.csproj
-```
-
-### Building the ClojureScript Executor (Optional)
-
-The ClojureScript executor is automatically built when building the server, but you can also build it separately:
-
-1. **Install dependencies**:
-   ```bash
-   cd ClojureExecutor
-   npm install
-   ```
-
-2. **Build for development**:
-   ```bash
-   npm run compile
-   ```
-
-3. **Build for production**:
-   ```bash
-   npm run release
-   ```
-
-4. **Watch mode (auto-rebuild)**:
-   ```bash
-   npm run watch
+   # Build entire solution
+   dotnet build Babble.sln
+   
+   # Run specific project
+   dotnet run --project Server/Babble.csproj
    ```
 
 The compiled JavaScript will be output to `Server/wwwroot/executor/` and automatically served by the server.
 
 The ClojureScript executor is automatically included in the main `index.html` page and provides safe, sandboxed ClojureScript evaluation accessible via `babble.core.eval_clojure_safe()`.
-
-For more details, see [ClojureExecutor/README.md](ClojureExecutor/README.md).
 
 ## License
 
@@ -138,8 +97,3 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Author
 
 Daniel Temkin - https://danieltemkin.com/Esolangs
-
----
-
-ChatGPT made this slogan:
-*Babble: Where your variables are everyone's variables.*

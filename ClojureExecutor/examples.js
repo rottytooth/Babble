@@ -203,7 +203,7 @@ console.log('\n=== Practical Use Case ===');
 // Load configuration from EDN
 const config = babble.core.read_clojure(`
   {:app-name "Babble"
-   :version "0.4.0"
+   :version "0.5.0"
    :features #{:eval :parse :compile}
    :limits {:max-iterations 1000
             :timeout-ms 5000}}

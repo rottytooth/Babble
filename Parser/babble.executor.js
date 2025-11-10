@@ -243,15 +243,36 @@ babble.executor =
         // Check if the first expression is def, defn, or define
         if (ast && ast.length > 0 && ast[0].type === 'list' && ast[0].value && ast[0].value.length > 0) {
             const firstSymbol = ast[0].value[0];
-            if (firstSymbol.type === 'symbol' && 
-                (firstSymbol.value === 'def' || firstSymbol.value === 'defn' || firstSymbol.value === 'define')) {
-                await assign_definition(ast, resp.symbols, callback);
-                return;
+
+            if (firstSymbol.type === 'symbol') {
+                switch (firstSymbol.value) {
+                    case 'def':
+                    case 'defn':
+                    case 'define':
+                        await assign_definition(ast, resp.symbols, callback);
+                        return;
+                    case 'handle':
+                        if (ast[0].value.length < 2) {
+                            callback({"status":"error","message":"Missing handle argument"});
+                            return;
+                        }
+                        babble.executor.handle = ast[0].value[1];
+                        return {"status":"verify_pwd", "message":"handle to be verified", "handle": babble.executor.handle};
+                    case "doc":
+                        let doc = await resolve(tree.args[0].name, true);
+                        return {"status":"success", "message": doc['doc']};
+                }
             }
         }
+        // this is not a define (or other handled by executor), so just eval it
+        let reworked_code = babble.code_emitter.astToCode(ast);
 
-        callback({"status":"success","message":"yay!"});
-    }
+        var x = babble.core.eval_clojure_safe(reworked_code);
+        if (x.success)
+            callback({"status":"success","message":x.result});
+        else 
+            callback({"status":"error","message":x.error});
+}
 
     // exposed methods
     return {
