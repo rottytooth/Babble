@@ -1,5 +1,29 @@
 
-babble.executor = 
+// babble.executor
+//
+// The main REPL entry point for the Babble client. Takes a line of Babble code,
+// parses and analyzes it, then routes it to the appropriate handler:
+//
+//   def / defn / define  — serializes the definition and POSTs it to the server
+//                          (/assign), after verifying all unknown symbols exist
+//                          in the server's Term table (/resolve_all).
+//   handle               — sets babble.executor.handle (the current user handle)
+//                          and requests a password challenge from the caller.
+//   doc                  — fetches documentation for a term from the server
+//                          (/resolve/<term>/doc) and returns it via callback.
+//   everything else      — converts the AST back to code (babble.code_emitter)
+//                          and evaluates it via babble.core.eval_clojure_safe().
+//
+// Callers: client-side REPL / UI — nothing else should call ex() directly.
+//
+// Entry:   babble.executor.ex(line, callback)
+//            line      — a string of Babble source code (one expression)
+//            callback  — function(response) where response is { status, message, ... }
+//                        status is 'success', 'error', 'warning', or 'verify_pwd'
+//
+// Depends on: babble.parser, babble.analyzer, babble.code_emitter, babble.core
+
+babble.executor =
 (function() {
     "use strict";
 
@@ -59,7 +83,6 @@ babble.executor =
 
         // doubly encode json content
         line = JSON.stringify(line);
-        params = JSON.stringify(params);
         definition = JSON.stringify(definition);
 
         // Convert arrays to JSON strings (symbols.builtIns and symbols.unknowns are already arrays)
@@ -135,7 +158,7 @@ babble.executor =
         
         if (nextElement && nextElement.type === 'vector') {
             // Single-arity defn
-            const params = JSON.stringify(nextElement.value.map(p => p.value));
+            const params = nextElement.value.map(p => p.value);
             const bodyExpressions = defForm.value.slice(bodyStart + 1);
             const definition = JSON.stringify(bodyExpressions);
             
@@ -166,7 +189,7 @@ babble.executor =
             
             for (const arityClause of arities) {
                 if (arityClause.type === 'list' && arityClause.value.length > 0) {
-                    const params = JSON.stringify(arityClause.value[0].value.map(p => p.value));
+                    const params = arityClause.value[0].value.map(p => p.value);
                     const bodyExpressions = arityClause.value.slice(1);
                     const definition = JSON.stringify(bodyExpressions);
                     
@@ -227,6 +250,19 @@ babble.executor =
         }
     }
 
+    async function resolve_doc(term) {
+        const response = await fetch(`${resolve_url}${encodeURIComponent(term)}/doc`);
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error(`Term '${term}' is unknown`);
+            }
+            throw new Error(`Could not resolve documentation for '${term}'`);
+        }
+
+        return await response.json();
+    }
+
     async function ex(line, callback) {
         try {
             var ast = babble.parser.parse(line);
@@ -239,6 +275,8 @@ babble.executor =
             callback(resp);
             return;
         }
+
+        
         
         // Check if the first expression is def, defn, or define
         if (ast && ast.length > 0 && ast[0].type === 'list' && ast[0].value && ast[0].value.length > 0) {
@@ -256,11 +294,29 @@ babble.executor =
                             callback({"status":"error","message":"Missing handle argument"});
                             return;
                         }
-                        babble.executor.handle = ast[0].value[1];
-                        return {"status":"verify_pwd", "message":"handle to be verified", "handle": babble.executor.handle};
+                        if (!ast[0].value[1].value || typeof ast[0].value[1].value !== 'string') {
+                            callback({"status":"error","message":"Handle must be a symbol or string"});
+                            return;
+                        }
+                        babble.executor.handle = ast[0].value[1].value;
+                        callback({"status":"verify_pwd", "message":"handle to be verified", "handle": babble.executor.handle});
+                        return;
                     case "doc":
-                        let doc = await resolve(tree.args[0].name, true);
-                        return {"status":"success", "message": doc['doc']};
+                        if (ast[0].value.length < 2) {
+                            callback({"status":"error","message":"Missing term argument"});
+                            return;
+                        }
+                        if (!ast[0].value[1].value || typeof ast[0].value[1].value !== 'string') {
+                            callback({"status":"error","message":"Doc target must be a symbol or string"});
+                            return;
+                        }
+                        try {
+                            const docResponse = await resolve_doc(ast[0].value[1].value);
+                            callback({"status":"success", "message": docResponse.doc || ""});
+                        } catch (error) {
+                            callback({"status":"error", "message": error.message});
+                        }
+                        return;
                 }
             }
         }

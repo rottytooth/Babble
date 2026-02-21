@@ -1,3 +1,21 @@
+// babble.analyzer
+//
+// Performs semantic analysis on the AST produced by babble.parser.
+// Validates structure (arity, placement of def/defn, let bindings, recur usage,
+// duplicate parameters, etc.) and classifies all symbols as built-in, locally
+// bound, or unknown (i.e. expected to be defined on the server).
+//
+// Caller:  babble.executor.ex() — called immediately after babble.parser.parse()
+//          and before any evaluation or server interaction.
+//
+// Entry:   babble.analyzer.analyze(ast)
+//            ast     — array of AST nodes from babble.parser.parse()
+//            returns { status, message, errors[], warnings[], ast, symbols }
+//                    status is 'success', 'warning', or 'error'
+//                    symbols has { builtIns[], locallyDefined[], unknowns[] }
+//                    unknowns are verified against the server's Term table by
+//                    babble.executor before a definition is submitted.
+
 babble.analyzer = {
     analyze(ast) {
       const errors = [];

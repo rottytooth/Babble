@@ -7,7 +7,7 @@
     
     <!-- Version configuration -->
     <VersionMajor>0</VersionMajor>
-    <VersionMinor>4</VersionMinor>
+    <VersionMinor>5</VersionMinor>
     <!-- Use days since 2024-01-01 as patch version for auto-increment -->
     <VersionPatch>$([System.Math]::Floor($([System.DateTime]::Now.Subtract($([System.DateTime]::Parse("2024-01-01"))).TotalDays)))</VersionPatch>
     <!-- Use minutes since midnight as revision for build uniqueness -->
@@ -54,6 +54,7 @@
       <ParserFiles Include="../Parser/**/*" Exclude="../Parser/tests/**/*" />
     </ItemGroup>
     <Copy SourceFiles="@(ParserFiles)" DestinationFolder="wwwroot/parser/%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Message Text="Parser files copied to wwwroot/parser/" Importance="high" />
   </Target>
 
   <Target Name="CleanParserFiles" BeforeTargets="Clean">

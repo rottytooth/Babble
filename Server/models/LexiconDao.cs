@@ -137,19 +137,10 @@ public class LexiconDao : IDisposable
 
     public async Task<string> Assign(TermDefinition termdef)
     {
-        string parameters;
-        int paramCount;
-
-        if (string.IsNullOrEmpty(termdef.Params) || termdef.Params == "[]")
-        {
-            parameters = "null";
-            paramCount = 0;
-        }
-        else
-        {
-            parameters = termdef.Params;
-            paramCount = termdef.Params.Count(c => c == ',') + 1;
-        }
+        var paramCount = termdef.Params?.Count ?? 0;
+        var parameters = paramCount == 0
+            ? "null"
+            : System.Text.Json.JsonSerializer.Serialize(termdef.Params);
 
         using var command = _connection.CreateCommand();
         command.CommandText = InsertQuery;

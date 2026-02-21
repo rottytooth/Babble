@@ -67,7 +67,7 @@ The project consists of four main components:
    dotnet run
    ```
 2. **Access the web interface**:
-   Open your browser to `https://localhost:5001` (or the port shown in terminal)
+   Open your browser to `https://localhost:5043` (or the port shown in terminal)
 
 ### Running the Client
 

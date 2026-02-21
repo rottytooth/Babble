@@ -1,8 +1,6 @@
 {:source-paths ["src"]
  
- :dependencies [[org.clojure/clojure "1.11.1"]
-                [org.clojure/clojurescript "1.11.60"]
-                [org.babashka/sci "0.8.41"]]
+ :dependencies [[org.babashka/sci "0.8.41"]]
  
  :builds
  {:app {:target :browser

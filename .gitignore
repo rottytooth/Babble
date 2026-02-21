@@ -18,3 +18,5 @@ config.local.ini
 # OS
 .DS_Store
 Thumbs.db
+
+.vscode-jest

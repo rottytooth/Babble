@@ -29,8 +29,14 @@ function loadBabbleModules() {
     
     try {
         // Create global babble object FIRST (modules expect this to exist)
+        // babble.core is the compiled ClojureScript/SCI evaluator, built separately.
+        // Stub it out so executor tests don't depend on the Clojure build.
         const context = {
-            babble: {},
+            babble: {
+                core: {
+                    eval_clojure_safe: (_code) => ({ success: true, result: null })
+                }
+            },
             console: console,
             setTimeout: setTimeout,
             setInterval: setInterval,
@@ -63,7 +69,7 @@ function loadBabbleModules() {
         
         // Copy to global
         global.babble = context.babble;
-        
+
         // Verify modules loaded
         if (!global.babble.parser) {
             throw new Error('Parser module did not initialize babble.parser');

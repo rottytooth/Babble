@@ -1,5 +1,22 @@
 
-babble.code_emitter = 
+// babble.code_emitter
+//
+// Converts a Babble AST (as produced by babble.parser) back into Babble/Clojure
+// source code. Used as a round-trip step before handing code to the evaluator,
+// and to format stored definitions in human-readable form for error messages.
+//
+// Callers:
+//   babble.executor.ex()          — converts the full AST to a code string before
+//                                   passing it to babble.core.eval_clojure_safe().
+//   babble.executor (internally)  — called inside assign_definition() to reformat
+//                                   an existing definition when reporting a conflict.
+//
+// Entry:   babble.code_emitter.astToCode(ast)
+//            ast     — a single AST node or an array of top-level nodes
+//            returns — a Babble source string; multiple top-level nodes are joined
+//                      with newlines.
+
+babble.code_emitter =
 (function() {
     "use strict";
 

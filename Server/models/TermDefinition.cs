@@ -4,7 +4,7 @@ public class TermDefinition
 {
     public required string Term { get; set; }
     public required string Definition { get; set; }
-    public string? Params { get; set; }
+    public List<string>? Params { get; set; }
     public required string Line { get; set; }
     public string? Creator { get; set; }
     public string? IPAddr { get; set; }

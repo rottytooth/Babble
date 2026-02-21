@@ -99,7 +99,7 @@
    Example from JS:
      babble.core.get_sci_namespaces()  // => ['clojure.core', 'clojure.string', ...]"
   []
-  (clj->js (keys (sci/get-namespace-map sci-ctx))))
+  (clj->js (map str (keys @(:env sci-ctx)))))
 
 (defn ^:export eval-with-bindings
   "Evaluates code with custom variable bindings.
