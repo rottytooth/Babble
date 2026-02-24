@@ -1,49 +1,168 @@
-/* @font-face {
-    font-family: 'SourceSansPro';
-    src: url('/static/SourceSansPro-Regular.ttf');
-} */
 @font-face {
     font-family: 'RobotoMono';
-    src: url('/static/RobotoMono-Regular.ttf');
+    src: url('RobotoMono-Regular.ttf');
+}
+@font-face {
+    font-family: 'RobotoMono';
+    font-style: italic;
+    src: url('RobotoMono-Italic.ttf');
+}
+:root {
+    --color-seagreen: #00ad9c;
+    --color-yellow: #c38418;
+    --color-orange: #df5320;
+    --color-red: #f22c40;
+}
+
+html {
+    background-color: #000;
 }
 body {
-    background-color: #101010;
-    padding: 0;
-    margin: 0;
-    color: #eee;
+    background-color: #221e1c;
+    box-shadow: inset 0 0 170px rgba(0, 0, 0, 0.85);
+    min-height: calc(100vh - 40px);
+    padding: 0px;
+    margin: 20;
+    color: var(--color-seagreen);
     font-family: 'RobotoMono';
-    font-size: 14pt;
+    font-size: 15.5pt;
 }
+a, a:hover, a:visited {
+    color: var(--color-seagreen);
+    text-decoration: underline;
+}
+
+.headerBack {
+    color: var(--color-red);
+}
+
 #cmdWindow {
-    background-color: #101010;
     padding: 20px;
-    /* text-shadow: 0px 0px 1px #fff; */
+}
+#header {
+    display: flex;
+    align-items: stretch;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+#logoWrap {
+    padding-right: 10px;
+    flex-shrink: 0;
+}
+#babbleLogo {
+    height: 100%;
+    width: auto;
+}
+.header_inline {
+    padding-left: 0;
+}
+#headerCommands {
+    padding-left: 0;
+    padding-top: 15px;
+}
+#headerText {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    margin-left: 10px;
+    line-height: 1.2;
+    margin-left: 190px;
+}
+#headerText span {
+    padding-bottom: 0;
+    margin-bottom: 0;
 }
 #cursor {
-    opacity: 0.35;
+    opacity: 0.45;
     padding-left: 3px;
 
     animation: blinker 1.5s linear infinite;
 }
 
 #cover {
-    position: absolute;
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    background-image: url("/static/stripes.png");
+    background-image: url("stripes.png");
     pointer-events: none;
-    opacity: .4;
+    z-index: 9999;
+    opacity: .25;
 }
 .server_response {
-    color: #99ff99;
+    padding-left: 10px;
+    color: var(--color-yellow);
+}
+.code_sample {
+    color: var(--color-yellow);
+}
+.server_response::before {
+  content: "::\00a0";
 }
 .error_response {
-    color: #ff7777;
+    padding-left: 10px;
+    color: var(--color-red);
+}
+.error_response::before {
+  content: "::\00a0";
+}
+.warning_response {
+    padding-left: 10px;
+    color: var(--color-yellow);
+}
+.warning_response::before {
+  content: "::\00a0";
+}
+.verify_pwd_response {
+    padding-left: 10px;
+    color: var(--color-orange);
 }
 .code {
-    color: #eee;
+    color: var(--color-seagreen);
 }
-  
+
+#userInput {
+    outline: none;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    display: inline;
+    min-width: 1ch;
+    caret-color: #666;
+    white-space: pre-wrap;
+}
+
+input[type="password"] {
+    outline: none;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    display: inline;
+    min-width: 1ch;
+    caret-color: #666;
+}
+
+#userInput:empty:before {
+    content: "";
+    display: inline-block;
+    width: 0;
+}
+
+.command_text {
+    white-space: pre-wrap;
+}
+
+.promptPrefix {
+    color: #666;
+}
+.carrot {
+    color: var(--color-orange);
+}
+
 @keyframes blinker {
 50% {
     opacity: .5;

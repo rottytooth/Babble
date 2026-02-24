@@ -42,11 +42,21 @@ app.MapGet("/info", () =>
 })
 .WithName("GetProjectInfo");
 
-app.MapGet("/resolve/{cmd_name}", async (string cmd_name, LexiconDao lexiconDao) =>
+app.MapGet("/builtins", () =>
+{
+    return Results.Ok(SemanticInterpreter.GetAllBuiltIns());
+})
+.WithName("GetBuiltIns");
+
+// With ?arity=N → returns a single matching term object.
+// Without arity   → returns a JSON array of all arity overloads.
+app.MapGet("/resolve/{cmd_name}", async (string cmd_name, int? arity, LexiconDao lexiconDao) =>
 {
     try
     {
-        var result = await lexiconDao.Resolve(cmd_name);
+        var result = arity.HasValue
+            ? await lexiconDao.Resolve(cmd_name, arity.Value)
+            : await lexiconDao.ResolveAllArities(cmd_name);
         return Results.Content(result, "application/json");
     }
     catch (LexicalException ex)
@@ -66,12 +76,12 @@ app.MapGet("/resolve_all/{cmd_names}", async (string cmd_names, LexiconDao lexic
     {
         // Split the comma-separated list of term names
         var termNames = cmd_names.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        
+
         if (termNames.Length == 0)
         {
             return Results.BadRequest(new { error = "No term names provided" });
         }
-        
+
         var result = await lexiconDao.ResolveAll(termNames);
         return Results.Content(result, "application/json");
     }

@@ -7,19 +7,50 @@ public class LexiconDao : IDisposable
     private readonly SqliteConnection _connection;
     private bool _disposed = false;
 
-    const string ResolveQuery = "SELECT Params, Definition, Line FROM Term WHERE Name=@name;";
+    // Use relaxed escaping so arithmetic symbols like + are stored as-is rather than \u002B.
+    private static readonly System.Text.Json.JsonSerializerOptions _dbJsonOptions = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
+    const string ResolveQuery = @"
+        SELECT t.Params, t.Definition, t.Line,
+               (SELECT json_group_array(s.Name)
+                FROM TermDependency ts
+                JOIN Term s ON ts.SymbolID = s.ID
+                WHERE ts.TermID = t.ID) AS SymbolNames
+        FROM Term t
+        WHERE t.Name = @name;";
+
+    const string ResolveQueryWithArity = @"
+        SELECT t.Params, t.Definition, t.Line,
+               (SELECT json_group_array(s.Name)
+                FROM TermDependency ts
+                JOIN Term s ON ts.SymbolID = s.ID
+                WHERE ts.TermID = t.ID) AS SymbolNames
+        FROM Term t
+        WHERE t.Name = @name AND t.ParamNum = @paramNum;";
 
     const string ResolveDocQuery = "SELECT Doc FROM Term WHERE Name=@name;";
 
-    const string InsertQuery = @"INSERT INTO Term 
-        (Name, Params, ParamNum, Definition, Line, Creator, IPAddr, Doc, BuiltIns, Symbols) 
-        VALUES 
+    const string InsertQuery = @"INSERT INTO Term
+        (Name, Params, ParamNum, Definition, Line, Creator, IPAddr, Doc, BuiltIns, Symbols)
+        VALUES
         (@name, @params, @paramcount, @def, @line, @creator, @ipaddr, @doc, @builtins, @symbols);";
 
-    const string InsertDependencyQuery = @"INSERT INTO TermDependency 
-        (TermID, DependentTermID) 
-        VALUES 
-        (@termid, @dependenttermid);";
+    // Links a symbol to a term. Returns 0 rows if @symbolname doesn't exist in Term,
+    // which the caller treats as "symbol not defined".
+    const string InsertDependencyQuery = @"
+        INSERT INTO TermDependency (TermID, SymbolID)
+        SELECT @termid, ID FROM Term WHERE Name = @symbolname;";
+
+    // Rebuilds Term.Symbols as a JSON array of all SymbolIDs in TermDependency for this term.
+    // Run once after all InsertDependencyQuery calls succeed.
+    const string UpdateSymbolsQuery = @"
+        UPDATE Term SET Symbols = (
+            SELECT json_group_array(SymbolID) FROM TermDependency WHERE TermID = @id
+        ) WHERE ID = @id;";
+
 
     public LexiconDao()
     {
@@ -29,56 +60,75 @@ public class LexiconDao : IDisposable
         Console.WriteLine($"Connected to SQLite database: BabbleLexicon.db");
     }
 
-    public async Task<string> Resolve(string name)
+    // Resolves a term by exact arity. Throws if not found.
+    public async Task<string> Resolve(string name, int paramNum)
     {
+        using var command = _connection.CreateCommand();
+        command.CommandText = ResolveQueryWithArity;
+        command.Parameters.AddWithValue("@name", name);
+        command.Parameters.AddWithValue("@paramNum", paramNum);
 
+        using var reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+            throw new LexicalException($"Could not resolve term '{name}' with {paramNum} parameter(s)");
+
+        var paramsRaw = reader["Params"]?.ToString();
+        object[] paramsArray = string.IsNullOrEmpty(paramsRaw) || paramsRaw == "null"
+            ? []
+            : SafeDeserialize<object[]>(paramsRaw) ?? [paramsRaw];
+
+        object[] symbolsArray = SafeDeserialize<object[]>(reader["SymbolNames"]?.ToString()) ?? [];
+
+        var defRaw = reader["Definition"]?.ToString();
+        var lineRaw = reader["Line"]?.ToString();
+
+        var retpacket = new
+        {
+            name,
+            @params = paramsArray,
+            definition = SafeDeserialize<object>(defRaw) ?? defRaw ?? "{}",
+            line = SafeDeserialize<object>(lineRaw) ?? lineRaw ?? "{}",
+            symbols = symbolsArray
+        };
+
+        return System.Text.Json.JsonSerializer.Serialize(retpacket);
+    }
+
+    // Returns all arity overloads of a term as a JSON array. Throws if none found.
+    public async Task<string> ResolveAllArities(string name)
+    {
         using var command = _connection.CreateCommand();
         command.CommandText = ResolveQuery;
         command.Parameters.AddWithValue("@name", name);
 
-        var results = new List<Dictionary<string, object>>();
-        
+        var results = new List<object>();
+
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            var row = new Dictionary<string, object>
-            {
-                ["Params"] = reader["Params"],
-                ["Definition"] = reader["Definition"],
-                ["Line"] = reader["Line"]
-            };
-            results.Add(row);
-        }
+            var paramsRaw = reader["Params"]?.ToString();
+            object[] paramsArray = string.IsNullOrEmpty(paramsRaw) || paramsRaw == "null"
+                ? []
+                : SafeDeserialize<object[]>(paramsRaw) ?? [paramsRaw];
 
-        if (results.Count == 1)
-        {
-            var paramsValue = results[0]["Params"]?.ToString();
-            var paramsArray = paramsValue == "null" || string.IsNullOrEmpty(paramsValue) 
-                ? new object[0] 
-                : System.Text.Json.JsonSerializer.Deserialize<object[]>(paramsValue) ?? new object[0];
+            object[] symbolsArray = SafeDeserialize<object[]>(reader["SymbolNames"]?.ToString()) ?? [];
+            var defRaw = reader["Definition"]?.ToString();
+            var lineRaw = reader["Line"]?.ToString();
 
-            var definitionJson = results[0]["Definition"]?.ToString() ?? "{}";
-            var definition = System.Text.Json.JsonSerializer.Deserialize<object>(definitionJson);
-
-            var retpacket = new
+            results.Add(new
             {
                 name = name,
                 @params = paramsArray,
-                definition = definition,
-                line = results[0]["Line"]
-            };
+                definition = SafeDeserialize<object>(defRaw) ?? defRaw ?? "{}",
+                line = SafeDeserialize<object>(lineRaw) ?? lineRaw ?? "{}",
+                symbols = symbolsArray
+            });
+        }
 
-            return System.Text.Json.JsonSerializer.Serialize(retpacket);
-        }
-        else if (results.Count == 0)
-        {
+        if (results.Count == 0)
             throw new LexicalException($"Term '{name}' is unknown");
-        }
-        else
-        {
-            // log error here
-            throw new LexicalException($"Multiple definitions found for term '{name}'");
-        }
+
+        return System.Text.Json.JsonSerializer.Serialize(results);
     }
 
     public async Task<string> ResolveDoc(string name)
@@ -140,97 +190,83 @@ public class LexiconDao : IDisposable
         var paramCount = termdef.Params?.Count ?? 0;
         var parameters = paramCount == 0
             ? "null"
-            : System.Text.Json.JsonSerializer.Serialize(termdef.Params);
+            : System.Text.Json.JsonSerializer.Serialize(termdef.Params, _dbJsonOptions);
 
-        using var command = _connection.CreateCommand();
-        command.CommandText = InsertQuery;
-        command.Parameters.AddWithValue("@name", termdef.Term);
-        command.Parameters.AddWithValue("@params", parameters);
-        command.Parameters.AddWithValue("@paramcount", paramCount);
-        command.Parameters.AddWithValue("@def", termdef.Definition);
-        command.Parameters.AddWithValue("@line", termdef.Line);
-        command.Parameters.AddWithValue("@creator", termdef.Creator ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@ipaddr", termdef.IPAddr ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@doc", termdef.Doc ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@builtins", termdef.BuiltIns ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@symbols", termdef.Symbols ?? (object)DBNull.Value);
+        using var transaction = _connection.BeginTransaction();
         try
         {
-            var result = await command.ExecuteNonQueryAsync();
-            Console.WriteLine($"Inserted {result} row(s)");
-            
-            // Get the ID of the newly inserted Term
+            // Insert Term with Symbols = NULL; populated via TermDependency after symbol links are created.
+            using var insertCommand = _connection.CreateCommand();
+            insertCommand.Transaction = transaction;
+            insertCommand.CommandText = InsertQuery;
+            insertCommand.Parameters.AddWithValue("@name", termdef.Term);
+            insertCommand.Parameters.AddWithValue("@params", parameters);
+            insertCommand.Parameters.AddWithValue("@paramcount", paramCount);
+            insertCommand.Parameters.AddWithValue("@def", termdef.Definition);
+            insertCommand.Parameters.AddWithValue("@line", termdef.Line);
+            insertCommand.Parameters.AddWithValue("@creator", termdef.Creator ?? (object)DBNull.Value);
+            insertCommand.Parameters.AddWithValue("@ipaddr", termdef.IPAddr ?? (object)DBNull.Value);
+            insertCommand.Parameters.AddWithValue("@doc", termdef.Doc ?? (object)DBNull.Value);
+            var builtInsJson = termdef.BuiltIns == null || termdef.BuiltIns.Count == 0
+                ? (object)DBNull.Value
+                : System.Text.Json.JsonSerializer.Serialize(termdef.BuiltIns, _dbJsonOptions);
+            insertCommand.Parameters.AddWithValue("@builtins", builtInsJson);
+            insertCommand.Parameters.AddWithValue("@symbols", DBNull.Value);
+
+            await insertCommand.ExecuteNonQueryAsync();
+
             long newTermId;
             using (var idCommand = _connection.CreateCommand())
             {
+                idCommand.Transaction = transaction;
                 idCommand.CommandText = "SELECT last_insert_rowid();";
                 var idResult = await idCommand.ExecuteScalarAsync();
                 newTermId = Convert.ToInt64(idResult);
             }
-            Console.WriteLine($"New Term ID: {newTermId}");
-            
-            // Add TermDependency entries for each symbol in the Symbols field
-            if (!string.IsNullOrEmpty(termdef.Symbols) && termdef.Symbols != "[]")
+            Console.WriteLine($"Inserted Term '{termdef.Term}' with ID {newTermId}");
+
+            if (termdef.Symbols != null && termdef.Symbols.Count > 0)
             {
-                try
+                foreach (var symbolName in termdef.Symbols)
                 {
-                    var symbols = System.Text.Json.JsonSerializer.Deserialize<string[]>(termdef.Symbols);
-                    if (symbols != null && symbols.Length > 0)
+                    using var symCommand = _connection.CreateCommand();
+                    symCommand.Transaction = transaction;
+                    symCommand.CommandText = InsertDependencyQuery;
+                    symCommand.Parameters.AddWithValue("@termid", newTermId);
+                    symCommand.Parameters.AddWithValue("@symbolname", symbolName);
+
+                    var rows = await symCommand.ExecuteNonQueryAsync();
+                    if (rows == 0)
                     {
-                        foreach (var symbolName in symbols)
-                        {
-                            // Find the Term ID for this symbol name
-                            using var lookupCommand = _connection.CreateCommand();
-                            lookupCommand.CommandText = "SELECT ID FROM Term WHERE Name = @name LIMIT 1;";
-                            lookupCommand.Parameters.AddWithValue("@name", symbolName);
-                            
-                            var dependentTermId = await lookupCommand.ExecuteScalarAsync();
-                            
-                            if (dependentTermId != null)
-                            {
-                                // Insert the dependency relationship
-                                using var depCommand = _connection.CreateCommand();
-                                depCommand.CommandText = InsertDependencyQuery;
-                                depCommand.Parameters.AddWithValue("@termid", newTermId);
-                                depCommand.Parameters.AddWithValue("@dependenttermid", dependentTermId);
-                                
-                                try
-                                {
-                                    await depCommand.ExecuteNonQueryAsync();
-                                    Console.WriteLine($"Added dependency: Term {newTermId} depends on Term {dependentTermId} ({symbolName})");
-                                }
-                                catch (SqliteException depEx) when (depEx.SqliteErrorCode == SQLitePCL.raw.SQLITE_CONSTRAINT)
-                                {
-                                    // Duplicate dependency entry, ignore
-                                    Console.WriteLine($"Dependency already exists: {newTermId} -> {dependentTermId}");
-                                }
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Warning: Symbol '{symbolName}' not found in Term table, skipping dependency");
-                            }
-                        }
+                        transaction.Rollback();
+                        throw new LexicalException($"Symbol '{symbolName}' is not defined");
                     }
+                    Console.WriteLine($"Linked symbol '{symbolName}' to Term {newTermId}");
                 }
-                catch (System.Text.Json.JsonException jsonEx)
-                {
-                    Console.WriteLine($"Warning: Could not parse Symbols JSON: {jsonEx.Message}");
-                }
+
+                using var updateCmd = _connection.CreateCommand();
+                updateCmd.Transaction = transaction;
+                updateCmd.CommandText = UpdateSymbolsQuery;
+                updateCmd.Parameters.AddWithValue("@id", newTermId);
+                await updateCmd.ExecuteNonQueryAsync();
             }
-            
+
+            transaction.Commit();
             return "{\"complete\": true}";
+        }
+        catch (LexicalException)
+        {
+            // Already rolled back; re-throw as-is.
+            throw;
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == SQLitePCL.raw.SQLITE_CONSTRAINT)
         {
-            // Get the real definition of the term, since assignment could not happen
-            const string resolveQuery = @"
-                SELECT Line 
-                FROM Term 
-                WHERE Name = :name";
+            transaction.Rollback();
 
+            // Get the existing definition so the caller can report what it was assigned to.
             using var resolveCommand = _connection.CreateCommand();
-            resolveCommand.CommandText = resolveQuery;
-            resolveCommand.Parameters.AddWithValue(":name", termdef.Term);
+            resolveCommand.CommandText = "SELECT Line FROM Term WHERE Name = @name;";
+            resolveCommand.Parameters.AddWithValue("@name", termdef.Term);
 
             using var reader = await resolveCommand.ExecuteReaderAsync();
             if (await reader.ReadAsync())
@@ -242,8 +278,21 @@ public class LexiconDao : IDisposable
         }
         catch (Exception ex)
         {
-            // log error here
+            transaction.Rollback();
             throw new LexicalException($"Database error: {ex.Message}");
+        }
+    }
+
+    private static T? SafeDeserialize<T>(string? json) where T : class
+    {
+        if (string.IsNullOrEmpty(json) || json == "null") return null;
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<T>(json);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
         }
     }
 

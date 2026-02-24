@@ -2053,8 +2053,7 @@ function peg$parse(input, options) {
           s2 = peg$FAILED;
         }
         if (s2 !== peg$FAILED) {
-          s1 = [s1, s2];
-          s0 = s1;
+          s0 = s1; // return just "-", not the sequence array ["-", undefined]
         } else {
           peg$currPos = s0;
           s0 = peg$FAILED;

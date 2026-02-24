@@ -23,7 +23,8 @@ public class SemanticInterpreter
             "ns", "in-ns", "create-ns", "find-ns", "remove-ns", "refer", "require", "use", "alias", "ns-resolve", "ns-name", "ns-map", "ns-publics", "ns-imports", "ns-unmap", "ns-unalias", "ns-interns", "ns-refers", "ns-aliases", "ns-keys", "with-meta", "meta", "vary-meta"
         };
         public static string[] ThreadingMacros = { "->", "->>", "as->", "some->", "some->>" };
-        public static string[] ReplDebug = { "doc", "source", "pst", "find-doc", "dir", "apropos", "prn", "println", "print", "clojure.pprint/pprint" };
+        public static string[] ReplDebug = { "doc", "pst", "find-doc", "dir", "apropos", "prn", "println", "print", "clojure.pprint/pprint" };
+        public static string[] BabbleBuiltIns = { "source", "desc", "man", "define", "handle", "about" };
         public static string[] SymbolsKeywordsLiterals = { "symbol", "symbol?", "gensym", "keyword", "keyword?", "find-keyword", "true", "false", "nil" };
         public static string[] MathBitwise = { "abs", "mod", "rand", "rand-int", "bit-and", "bit-or", "bit-xor", "bit-not", "bit-shift-left", "bit-shift-right" };
         public static string[] IoFiles = { "slurp", "spit", "read-line", "read-string", "pr-str", "str", "format" };
@@ -40,11 +41,30 @@ public class SemanticInterpreter
                 || NamespaceMeta.Contains(value)
                 || ThreadingMacros.Contains(value)
                 || ReplDebug.Contains(value)
+                || BabbleBuiltIns.Contains(value)
                 || SymbolsKeywordsLiterals.Contains(value)
                 || MathBitwise.Contains(value)
                 || IoFiles.Contains(value)
                 || Misc.Contains(value);
         }
+    }
+
+    public static IEnumerable<string> GetAllBuiltIns()
+    {
+        return IdentifierArrays.ArithmeticAndComparison
+            .Concat(IdentifierArrays.ControlFlow)
+            .Concat(IdentifierArrays.DataStructures)
+            .Concat(IdentifierArrays.Predicates)
+            .Concat(IdentifierArrays.FunctionalTools)
+            .Concat(IdentifierArrays.NamespaceMeta)
+            .Concat(IdentifierArrays.ThreadingMacros)
+            .Concat(IdentifierArrays.ReplDebug)
+            .Concat(IdentifierArrays.BabbleBuiltIns)
+            .Concat(IdentifierArrays.SymbolsKeywordsLiterals)
+            .Concat(IdentifierArrays.MathBitwise)
+            .Concat(IdentifierArrays.IoFiles)
+            .Concat(IdentifierArrays.Misc)
+            .Distinct();
     }
 
     public SemanticInterpreter()

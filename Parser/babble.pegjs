@@ -186,7 +186,7 @@ SymbolName
 SymbolStart
   = [a-zA-Z] 
   / [+*!?$%&=<>_]
-  / "-" ![0-9]
+  / "-" ![0-9] { return "-"; }
   / "/"
 
 SymbolContinue

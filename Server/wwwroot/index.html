@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Babble Server</title>
-    <link rel="stylesheet" href="console.css">
+    <link rel="stylesheet" href="console_dark.css">
     <script type="text/javascript">var babble = {};</script>
     <script src="parser/babble.parser.js"></script>
     <script src="parser/babble.analyzer.js"></script>
@@ -58,16 +58,20 @@
 <body>
     <div id="cover"></div>
     <div id="cmdWindow">
-        babble v<span id="versionDisplay"></span>
-        <span class="server_response">-
-        the language where globals are truly global<br/>
-        created by <a href="https://danieltemkin.com">Daniel Temkin</a>, 2015, implemented 2023-ish<br/>
-        one of <a href="https://mitpress.mit.edu/9780262553087/forty-four-esolangs/">Forty-Four Esolangs</a><br/>
-        (source <i>xxx</i>) <span class='promptPrefix'>to see code for existing expression </span><i>xxx</i><br/>
-        (def <i>xxx</i> "doc-string" [] <i>expressions</i>) <span class='promptPrefix'>to register new expression</span><br/>
-        (handle <i>xxx</i>) <span class='promptPrefix'>to set your handle</span><br/>
-        (about) <span class='promptPrefix'>for more info</span><br/><br/>
-        </span>
+        <div id="header">
+            <div id="logoWrap">
+                <img src="babble_red.svg" id="babbleLogo" alt="Babble Logo">
+            </div>
+            <div id="headerText">
+                babble v<span id="versionDisplay"></span><span class="verify_pwd_response">&mdash;
+                the language where globals are truly global<br/>created by <a href="https://danieltemkin.com">Daniel Temkin</a>, 2023, one of <a href="https://mitpress.mit.edu/9780262553087/forty-four-esolangs/">Forty-Four Esolangs</a></span><span class="verify_pwd_response header_inline" style="padding-left: 0"><br/>
+                <a href="/">View documentation</a> or get started with these commands:<br/></span>
+                
+                <div id="headerCommands" class="code_sample">
+                (source <i>xxx</i>)<span class='headerBack'> to see code for existing expression </span><i>xxx</i><br/>
+                (define <i>xxx</i> "doc-string" [] <i>expressions</i>) <span class='headerBack'>to register new expression</span><br/>
+                (handle <i>xxx</i>) <span class='headerBack'>to set your handle</span><br/>
+                (about) <span class='headerBack'>for more info</span></div></div></div>
         <span id="typing"></span></div>
 </body>
 </html>

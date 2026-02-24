@@ -17,13 +17,29 @@
 //                    babble.executor before a definition is submitted.
 
 babble.analyzer = {
-    analyze(ast) {
+    _builtins: null,
+
+    _loadBuiltIns() {
+        return fetch('/builtins')
+            .then(r => r.json())
+            .then(names => {
+                this._builtins = new Set(names);
+                return this._builtins;
+            })
+            .catch((ex) => {
+              throw new Error('Failed to load built-in function list from server', ex);
+            });
+    },
+
+    async analyze(ast) {
+      await babble.analyzer._builtinsPromise;
+
       const errors = [];
       const warnings = [];
       const symbolInfo = {
         builtIns: new Set(),
         locallyDefined: new Set(),
-        unknowns: new Set()
+        unknowns: new Map() // name → arity (number of args at call site; 0 for value-position)
       };
       
       // Analyze each top-level form
@@ -57,7 +73,7 @@ babble.analyzer = {
           symbols: {
             builtIns: Array.from(symbolInfo.builtIns),
             locallyDefined: Array.from(symbolInfo.locallyDefined),
-            unknowns: Array.from(symbolInfo.unknowns)
+            unknowns: Array.from(symbolInfo.unknowns, ([name, arity]) => ({ name, arity }))
           }
         };
       }
@@ -72,7 +88,7 @@ babble.analyzer = {
           symbols: {
             builtIns: Array.from(symbolInfo.builtIns),
             locallyDefined: Array.from(symbolInfo.locallyDefined),
-            unknowns: Array.from(symbolInfo.unknowns)
+            unknowns: Array.from(symbolInfo.unknowns, ([name, arity]) => ({ name, arity }))
           }
         };
       }
@@ -86,7 +102,7 @@ babble.analyzer = {
         symbols: {
           builtIns: Array.from(symbolInfo.builtIns),
           locallyDefined: Array.from(symbolInfo.locallyDefined),
-          unknowns: Array.from(symbolInfo.unknowns)
+          unknowns: Array.from(symbolInfo.unknowns, ([name, arity]) => ({ name, arity }))
         }
       };
     },
@@ -185,24 +201,22 @@ babble.analyzer = {
       if (first.type === 'symbol') {
         const op = first.value;
         
-        // Check for def/defn/define at non-top-level
-        if ((op === 'def' || op === 'defn' || op === 'define') && !context.isTopLevel) {
-          errors.push(`'${op}' can only be used at the top level, not inside other forms`);
+        // Reject def/defn — Babble uses 'define'
+        if (op === 'def' || op === 'defn') {
+          errors.push(`'${op}' is not supported; use 'define' instead`);
           return;
         }
-        
+
+        // Check for define at non-top-level
+        if (op === 'define' && !context.isTopLevel) {
+          errors.push(`'define' can only be used at the top level, not inside other forms`);
+          return;
+        }
+
         switch (op) {
           case 'define':
             // 'define' can be either def or defn based on its structure
             this.analyzeDefine(form, context, errors, warnings);
-            break;
-            
-          case 'def':
-            this.analyzeDef(form, context, errors, warnings);
-            break;
-            
-          case 'defn':
-            this.analyzeDefn(form, context, errors, warnings);
             break;
             
           case 'let':
@@ -283,15 +297,8 @@ babble.analyzer = {
         }
       }
       
-      // Check if it's a defn (has parameter vector or multi-arity lists) or def (has value)
-      const nextElement = form.value[checkIndex];
-      if (nextElement && (nextElement.type === 'vector' || nextElement.type === 'list')) {
-        // It's a defn - delegate to analyzeDefn
-        this.analyzeDefn(form, context, errors, warnings);
-      } else {
-        // It's a def - delegate to analyzeDef
-        this.analyzeDef(form, context, errors, warnings);
-      }
+      // define is always treated as defn; params vector is optional
+      this.analyzeDefn(form, context, errors, warnings);
     },
     
     analyzeDef(form, context, errors, warnings) {
@@ -363,30 +370,26 @@ babble.analyzer = {
         }
       }
       
-      // Check if multi-arity (next element is a list, not a vector)
-      if (form.value[bodyStart] && form.value[bodyStart].type === 'list') {
+      // Check if multi-arity: next element is a list whose first child is a vector ([params] body...)
+      const nextEl = form.value[bodyStart];
+      if (nextEl && nextEl.type === 'list' && nextEl.value?.[0]?.type === 'vector') {
         // Multi-arity function
         this.analyzeMultiArityDefn(form, bodyStart, context, errors, warnings);
       } else {
-        // Single-arity function
+        // Single-arity function (params vector optional)
         this.analyzeSingleArityDefn(form, bodyStart, context, errors, warnings);
       }
     },
     
     analyzeSingleArityDefn(form, bodyStart, context, errors, warnings) {
       const opName = form.value[0].value;
-      const params = form.value[bodyStart];
-      
-      if (!params) {
-        errors.push(`'${opName}' requires parameter vector`);
-        return;
-      }
-      
-      if (params.type !== 'vector') {
-        errors.push(`'${opName}' parameter list must be a vector, got ${params.type}`);
-        return;
-      }
-      
+      const potentialParams = form.value[bodyStart];
+
+      // Params vector is optional — if absent or not a vector, treat as []
+      const hasParamVector = potentialParams && potentialParams.type === 'vector';
+      const params = hasParamVector ? potentialParams : { type: 'vector', value: [] };
+      const actualBodyStart = hasParamVector ? bodyStart + 1 : bodyStart;
+
       // Collect parameter names
       const paramNames = new Set();
       for (const param of params.value) {
@@ -399,13 +402,13 @@ babble.analyzer = {
           errors.push(`Parameter must be a symbol, got ${param.type}`);
         }
       }
-      
+
       // Ensure there's at least one body expression
-      if (form.value.length <= bodyStart + 1) {
+      if (form.value.length <= actualBodyStart) {
         errors.push(`'${opName}' requires at least one body expression`);
         return;
       }
-      
+
       // Analyze body with parameters in scope
       const newContext = {
         ...context,
@@ -414,8 +417,8 @@ babble.analyzer = {
         boundVars: new Set([...context.boundVars, ...paramNames]),
         inLoop: false
       };
-      
-      for (let i = bodyStart + 1; i < form.value.length; i++) {
+
+      for (let i = actualBodyStart; i < form.value.length; i++) {
         this.analyzeForm(form.value[i], newContext, errors, warnings);
       }
     },
@@ -674,9 +677,10 @@ babble.analyzer = {
     },
     
     analyzeFunctionCall(form, context, errors, warnings) {
-      // Analyze function position
-      this.analyzeForm(form.value[0], { ...context, isTopLevel: false }, errors, warnings);
-      
+      const callArity = form.value.length - 1;
+      // Analyze function position — pass callArity so analyzeSymbol can record the arity
+      this.analyzeForm(form.value[0], { ...context, isTopLevel: false, callArity }, errors, warnings);
+
       // Analyze all arguments
       for (let i = 1; i < form.value.length; i++) {
         this.analyzeForm(form.value[i], { ...context, isTopLevel: false }, errors, warnings);
@@ -734,7 +738,9 @@ babble.analyzer = {
         // Unknown - possibly user-defined or undefined
         form.symbolType = 'unknown';
         if (context.symbolInfo) {
-          context.symbolInfo.unknowns.add(name);
+          // callArity is set when this symbol is in function-call position; 0 for value position
+          const arity = context.callArity ?? 0;
+          context.symbolInfo.unknowns.set(name, arity);
         }
         // This is just a warning since we don't have full context
         // warnings.push(`Possibly undefined var: ${name}`);
@@ -742,22 +748,9 @@ babble.analyzer = {
     },
     
     isBuiltIn(name) {
-      //FIXME: This should use keyword list from SemanticInterpreter.cs
-
-      // Common Clojure built-ins
-      const builtins = new Set([
-        '+', '-', '*', '/', '=', '<', '>', '<=', '>=',
-        'not', 'and', 'or',
-        'cons', 'conj', 'first', 'rest', 'list', 'vector', 'hash-map', 'hash-set',
-        'println', 'print', 'pr', 'prn', 'str',
-        'map', 'reduce', 'filter', 'remove', 'take', 'drop',
-        'inc', 'dec', 'count', 'empty?', 'nil?', 'some?',
-        'get', 'assoc', 'dissoc', 'update', 'keys', 'vals',
-        'atom', 'swap!', 'reset!', 'deref',
-        'throw', 'try', 'catch', 'finally',
-        'ns', 'require', 'import', 'use'
-      ]);
-      
-      return builtins.has(name);
+      return this._builtins ? this._builtins.has(name) : false;
     }
   };
+
+// Start loading built-ins from the server immediately on module load
+babble.analyzer._builtinsPromise = babble.analyzer._loadBuiltIns();

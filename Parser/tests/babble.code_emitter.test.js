@@ -17,7 +17,7 @@ const vm = require('vm');
  * This ensures modules are loaded with their interdependencies intact.
  * @returns {Object} Object containing babble.parser, babble.analyzer, babble.code_emitter
  */
-function loadBabbleModules() {
+async function loadBabbleModules() {
     const parserCode = fs.readFileSync(path.join(__dirname, '../babble.parser.js'), 'utf8');
     const analyzerCode = fs.readFileSync(path.join(__dirname, '../babble.analyzer.js'), 'utf8');
     const codeEmitterCode = fs.readFileSync(path.join(__dirname, '../babble.code_emitter.js'), 'utf8');
@@ -28,20 +28,28 @@ function loadBabbleModules() {
         setTimeout: setTimeout,
         clearTimeout: clearTimeout,
         setInterval: setInterval,
-        clearInterval: clearInterval
+        clearInterval: clearInterval,
+        fetch: (url) => {
+            if (url === '/builtins') {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+            }
+            return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+        },
     };
 
     vm.runInNewContext(parserCode, context);
     vm.runInNewContext(analyzerCode, context);
     vm.runInNewContext(codeEmitterCode, context);
 
+    await context.babble.analyzer._builtinsPromise;
+
     return context.babble;
 }
 
 let babble;
 
-beforeAll(() => {
-    babble = loadBabbleModules();
+beforeAll(async () => {
+    babble = await loadBabbleModules();
 });
 
 // ============================================================================

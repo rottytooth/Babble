@@ -7,7 +7,7 @@
     
     <!-- Version configuration -->
     <VersionMajor>0</VersionMajor>
-    <VersionMinor>5</VersionMinor>
+    <VersionMinor>6</VersionMinor>
     <!-- Use days since 2024-01-01 as patch version for auto-increment -->
     <VersionPatch>$([System.Math]::Floor($([System.DateTime]::Now.Subtract($([System.DateTime]::Parse("2024-01-01"))).TotalDays)))</VersionPatch>
     <!-- Use minutes since midnight as revision for build uniqueness -->
