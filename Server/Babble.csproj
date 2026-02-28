@@ -21,6 +21,7 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+    <PackageReference Include="Neo4j.Driver" Version="5.28.0" />
   </ItemGroup>
 
   <Target Name="BuildClojureExecutor" BeforeTargets="CopyParserFiles">

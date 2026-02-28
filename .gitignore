@@ -20,3 +20,9 @@ config.local.ini
 Thumbs.db
 
 .vscode-jest
+BabbleLexicon.sqbpro
+
+appsettings.Development.json
+appsettings.json
+Server/appsettings.Development.json
+Server/appsettings.json

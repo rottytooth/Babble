@@ -1,0 +1,258 @@
+
+:root {
+    --color-seagreen: #00ad9c;
+    --color-yellow: #c38418;
+    --color-orange: #df5320;
+    --color-red: #f22c40;
+    --color-literal: #73645e;
+    --color--var: #df5320;
+    --body-text: #c38418;
+}
+body {
+    color: var(--body-text);
+}
+
+/* HEADER */
+.guide-wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 30px 40px 30px;
+}
+
+/* ── Section layout ───────────────────────────────────── */
+.section {
+    margin-top: 56px;
+    border-top: 1px solid #3a3330;
+    padding-top: 28px;
+}
+#what {
+    border-top: none;
+}
+.section-title {
+    color: var(--color-orange);
+    font-size: 1.05em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0 0 18px 0;
+}
+.section p {
+    line-height: 1.75;
+    margin: 0 0 12px 0;
+}
+
+/* ── Babble code (inline and block) ───────────────────── */
+.babble-code {
+    color: var(--color-seagreen);
+}
+
+/* ── Code blocks ──────────────────────────────────────── */
+.code-block {
+    background: #1a1614;
+    border-left: 3px solid var(--color-red);
+    padding: 16px 20px;
+    margin: 18px 0;
+    white-space: pre;
+    line-height: 1.7;
+    overflow-x: auto;
+}
+
+/* ── Two-column examples ──────────────────────────────── */
+.example-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 18px 0;
+}
+@@media (max-width: 640px) {
+    .example-grid { grid-template-columns: 1fr; }
+}
+.example-card {
+    background: #1a1614;
+    border-top: 2px solid var(--color-red);
+    padding: 14px 16px;
+}
+.example-card .label {
+    color: var(--color-orange);
+    font-size: 0.78em;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.example-card pre {
+    margin: 0;
+    white-space: pre-wrap;
+    line-height: 1.65;
+}
+
+/* ── Command reference table ──────────────────────────── */
+.cmd-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+.cmd-table tr {
+    border-bottom: 1px solid #2e2926;
+}
+.cmd-table td {
+    padding: 10px 0;
+    vertical-align: top;
+}
+.cmd-table td:first-child {
+    width: 46%;
+    padding-right: 20px;
+    color: var(--color-seagreen);
+    white-space: nowrap;
+}
+.cmd-table td:last-child {
+    color: var(--body-text);
+    line-height: 1.6;
+}
+
+/* ── Lexicon callout ──────────────────────────────────── */
+.callout {
+    border: 1px solid #3a3330;
+    border-left: 3px solid var(--color-orange);
+    padding: 14px 18px;
+    margin: 20px 0;
+    color: var(--body-text);
+    line-height: 1.7;
+}
+.callout strong {
+    color: var(--color-orange);
+}
+
+.inset-highlight {
+    background: #026b61;
+    color: #1a1614;
+    font-weight: bold;
+    border-left: 3px solid var(--color-orange);
+    padding: 10px 14px;
+    margin: 34px 0 34px 0;
+}
+
+.inset-highlight p {
+    margin: 0;
+}
+
+.inset-highlight a, .inset-highlight a:visited {
+    color: #1a1614;
+    text-decoration: underline;
+}
+
+.error-inset {
+    background-color: #2a1e1c;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        #3a1e1d,
+        #3a1e1d 8px,
+        #460108 8px,
+        #460108 16px
+    );
+    border-left: 3px solid var(--color-red);
+    padding: 12px 14px;
+    margin: 14px 0;
+}
+
+.error-inset p {
+    margin: 0 0 8px 0;
+    color: #d3b7b1;
+}
+
+.error-inset pre {
+    margin: 0;
+    white-space: pre;
+    line-height: 1.6;
+}
+
+/* ── Footer ───────────────────────────────────────────── */
+.site-footer {
+    background: #026b61;
+    color: #2a1e18;
+    padding: 28px 40px 60px 40px;
+    margin-top: 60px;
+    line-height: 1.7;
+}
+.site-footer a {
+    color: #1a1210;
+    text-decoration: underline;
+}
+.site-footer a:hover {
+    color: #3d2a22;
+}
+.site-footer .footer-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.site-footer .footer-right {
+    font-size: 0.82em;
+    opacity: 0.75;
+}
+
+/* ── Page nav ─────────────────────────────────────────── */
+.page-nav {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid #2e2926;
+    font-size: 0.85em;
+}
+.page-nav a {
+    color: #6a9a95;
+}
+.page-nav a:hover {
+    color: var(--color-seagreen);
+}
+
+/* ── Hero ─────────────────────────────────────────── */
+#heroWrapper {
+    height: 100vh;
+}
+
+#logoHero {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    height: calc(100vh - 40px);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    overflow: hidden;
+    will-change: height;
+}
+
+.hero-img-wrap {
+    flex: 0 0 auto;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+#heroImg {
+    height: 100%;
+    width: auto;
+    display: block;
+}
+
+#heroStripes {
+    position: absolute;
+    inset: 0;
+    background-image: url("stripes.png");
+    opacity: 0.25;
+    pointer-events: none;
+    transform-origin: top right;
+    z-index: 1000;
+}
+
+i {
+    font-style: italic;
+    color: var(--color-orange);
+}

@@ -1,5 +1,5 @@
 CREATE TABLE "Term" (
-	"ID"	INTEGER NOT NULL,
+	"TermID"	INTEGER NOT NULL,
 	"Name"	TEXT NOT NULL,
 	"Params"	TEXT,
 	"ParamNum"	INTEGER,
@@ -17,7 +17,7 @@ CREATE TABLE "Term" (
 	-- Symbols: JSON array of Term IDs (integers) for each Babble term referenced in this
 	--   definition. IDs correspond to Term.ID. Resolved to names on read.
 	"Symbols"	TEXT,
-	"AddedAt"	DATETIME DEFAULT CURRENT_TIMESTAMP,
+	"CreatedAt"	DATETIME DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY("ID" AUTOINCREMENT),
 	UNIQUE("Name","ParamNum")
 );

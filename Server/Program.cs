@@ -6,9 +6,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddRazorPages();
 
 // Register LexiconDao as a singleton service
 builder.Services.AddSingleton<LexiconDao>();
+builder.Services.AddSingleton<BabbleGraphDao>();
 
 var app = builder.Build();
 
@@ -21,6 +23,19 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.Equals("/console", StringComparison.Ordinal))
+    {
+        context.Response.Redirect("/console/", permanent: false);
+        return;
+    }
+
+    await next();
+});
+
+app.MapRazorPages();
 
 
 app.MapGet("/api/userip", (HttpContext context) => 
@@ -129,6 +144,7 @@ app.MapPost("/assign", async (TermDefinition termDefinition, LexiconDao lexiconD
     }
 })
 .WithName("AssignTerm");
+
 
 // Handle application shutdown to close database connection
 var applicationLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();

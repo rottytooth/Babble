@@ -1,0 +1,35 @@
+@{
+    var showVersion = ViewData["ShowVersion"] as bool? ?? false;
+    var ctaHref = ViewData["HeaderCtaHref"] as string ?? "/";
+    var ctaText = ViewData["HeaderCtaText"] as string ?? "Open";
+    var ctaSuffix = ViewData["HeaderCtaSuffix"] as string ?? string.Empty;
+    var showHeaderCommands = ViewData["ShowHeaderCommands"] as bool? ?? false;
+    var extraHeaderHtml = ViewData["HeaderExtraHtml"] as string ?? string.Empty;
+}
+
+<div id="header">
+    <div id="logoWrap">
+        <img src="/babble_red.svg" id="babbleLogo" alt="Babble Logo">
+    </div>
+    <div id="headerText">
+        babble @if (showVersion)
+        {<text> v<span id="versionDisplay"></span></text>}<span class="verify_pwd_response">&mdash;
+        the language where globals are truly global<br/>created by <a href="https://danieltemkin.com">Daniel Temkin</a>, one of <a href="https://mitpress.mit.edu/9780262553087/forty-four-esolangs/">Forty-Four Esolangs</a></span><span class="verify_pwd_response header_inline" style="padding-left: 0"><br/>
+        <a href="@ctaHref">@ctaText</a>@if (!string.IsNullOrWhiteSpace(ctaSuffix))
+        {<text> @ctaSuffix</text>}<br/></span>
+
+        @if (!string.IsNullOrWhiteSpace(extraHeaderHtml))
+        {
+            @Html.Raw(extraHeaderHtml)
+        }
+
+        @if (showHeaderCommands)
+        {
+            <div id="headerCommands" class="code_sample">
+            (source <i>xxx</i>)<span class='headerBack'> to see code for existing expression </span><i>xxx</i><br/>
+            (define <i>xxx</i> "doc-string" [] <i>expressions</i>) <span class='headerBack'>to register new expression</span><br/>
+            (handle <i>xxx</i>) <span class='headerBack'>to set your handle</span><br/>
+            (about) <span class='headerBack'>for more info</span></div>
+        }
+    </div>
+</div>

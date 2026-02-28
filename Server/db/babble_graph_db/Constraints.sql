@@ -1,0 +1,12 @@
+CREATE CONSTRAINT term_id IF NOT EXISTS
+FOR (t:Term) REQUIRE t.term_id IS UNIQUE;
+
+CREATE CONSTRAINT user_id IF NOT EXISTS
+FOR (u:User) REQUIRE u.user_id IS UNIQUE;
+
+CREATE CONSTRAINT proposal_id IF NOT EXISTS
+FOR (p:Proposal) REQUIRE p.proposal_id IS UNIQUE;
+
+CREATE CONSTRAINT term_version_id IF NOT EXISTS
+FOR (v:TermVersion) REQUIRE v.version_id IS UNIQUE;
+

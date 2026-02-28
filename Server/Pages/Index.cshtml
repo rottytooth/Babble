@@ -1,0 +1,249 @@
+@page "/"
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>babble &mdash; Language Guide</title>
+    <link rel="stylesheet" href="console_dark.css">
+    <link rel="stylesheet" href="documentation.css">
+</head>
+<body>
+    <div id="cover"></div>
+
+    <div id="heroWrapper">
+        <div id="logoHero">
+            <div class="hero-img-wrap">
+                <div id="heroStripes"></div>
+                <img src="babble_red.svg" id="heroImg" alt="babble">
+            </div>
+        </div>
+    </div>
+
+    <div id="cmdWindow">
+        <div class="guide-wrap">
+
+            <!-- ── What is babble? ─────────────────────────────── -->
+            <div class="section" id="what">
+                <p><code class="babble-code">(babble)</code> is a dynamic, general-purpose language with a single, persistent, globally global namespace. Every term you define is stored in a server-side <i>lexicon</i> and immediately available to every other user. In (babble), there are no modules, no packages.</p>
+
+                <p>If you define <code class="babble-code">double</code> as <code class="babble-code">(define double [x] (* 2 x))</code>, it is not only declared in your local session, but across all babble programs. Congratulations, you've contributed to babble's standard library!</p>
+
+                <div class="inset-highlight">
+                    <p><a href="/console/">Try the babble console</a></p>
+                </div>
+
+                <p>(babble) borrows its syntax and code-as-data philosophy from Clojure: everything is an s-expression and functions are first-class.</p>
+                <p>Terms can be renamed or reorganized individually or through <i>dialects</i>, systematic renaming proposals approved and incorporated into the main language. These rely on community consensus, with an assumption of good faith.</p>
+            </div>
+
+            <!-- ── Syntax ─────────────────────────────────────── -->
+            <div class="section" id="syntax">
+                <div class="section-title">Syntax</div>
+                <p>(babble) uses Clojure/Lisp syntax and encourages a tacit, pure style. Every expression is wrapped in parentheses, with the function name first, followed by its arguments.</p>
+
+                <div class="error-inset">
+                    <pre class="babble-code">(defn f [x]
+  (-> x
+      (inc)
+      (* 3)
+      (str "!")))</pre>
+                </div>
+                <p>Instead, we use a more concise, point-free style:</p>
+
+                <div class="code-block babble-code">(def f (comp #(str % "!") #(* % 3) inc))</div>
+
+                <p>Simple commands look very much Clojury:</p>
+
+                <div class="code-block babble-code">(+ 1 2)                     ; => 3
+(str "hello" " world")      ; => "hello world"
+(if (> 3 2) "yes" "no")     ; => "yes"</div>
+
+                <p>Vectors use square brackets. They appear mainly in parameter lists and <code class="babble-code">let</code> bindings.</p>
+                <div class="code-block babble-code">[x y z]           ; a vector of three symbols
+
+(let [a 10  b 20]
+  (+ a b))          ; => 30</div>
+
+                <p>Strings are double-quoted. Numbers may be integers or floats, and may include a leading sign.</p>
+                <div class="code-block babble-code">"hello"   42   3.14   -7   +1.5</div>
+            </div>
+
+            <!-- ── Defining Terms ─────────────────────────────── -->
+            <div class="section" id="defining">
+                <div class="section-title">Defining Terms</div>
+                <p>Use <code class="babble-code">define</code> to add a new term to the lexicon. The general form is:</p>
+
+                <div class="code-block babble-code">(define name "optional docstring" [param1 param2 …]
+  body-expression)</div>
+
+                <div class="example-grid">
+                    <div class="example-card">
+                        <div class="label">Value (no params)</div>
+                        <pre class="babble-code">(define tau
+  (* 2 3.14159))</pre>
+                    </div>
+                    <div class="example-card">
+                        <div class="label">Function (with params)</div>
+                        <pre class="babble-code">(define double
+  [x]
+  (* 2 x))</pre>
+                    </div>
+                    <div class="example-card">
+                        <div class="label">With docstring</div>
+                        <pre class="babble-code">(define square
+  "Returns x squared."
+  [x]
+  (* x x))</pre>
+                    </div>
+                    <div class="example-card">
+                        <div class="label">Using other terms</div>
+                        <pre class="babble-code">(define quad
+  [x]
+  (square (square x)))</pre>
+                    </div>
+                </div>
+
+                <p>Terms at different arities are stored separately. You can define <code class="babble-code">add</code> for one argument and again for two:</p>
+                <div class="code-block babble-code">(define add [x]   (+ x 0))
+(define add [x y] (+ x y))</div>
+
+                <div class="callout">
+                    <strong>Names are permanent.</strong> Once a term is defined, it cannot easily be redefined or deleted. Choose names carefully &mdash; they belong to the whole community.
+                </div>
+            </div>
+
+            <!-- ── Using Terms ────────────────────────────────── -->
+            <div class="section" id="using">
+                <div class="section-title">Using Terms</div>
+                <p>Call any term by placing its name in the function position of a list, followed by the arguments.</p>
+
+                <div class="code-block babble-code">(double 21)                      ; => 42
+(square 9)                       ; => 81
+(add 3 4)                        ; => 7
+(+ (double 5) (square 3))        ; => 19</div>
+
+                <p>Terms can be combined freely with built-in Clojure functions. The full set of available built-ins &mdash; arithmetic, collections, strings, higher-order functions &mdash; is the same as in Clojure/SCI.</p>
+
+                <div class="code-block babble-code">(map double [1 2 3 4])          ; => (2 4 6 8)
+(filter odd? [1 2 3 4 5])       ; => (1 3 5)
+(reduce add [10 20 30])         ; => 60</div>
+            </div>
+
+            <!-- ── Command Reference ──────────────────────────── -->
+            <div class="section" id="reference">
+                <div class="section-title">Lexicon</div>
+                <table class="cmd-table">
+                    <tr>
+                        <td><code class="babble-code">(define name [params] body)</code></td>
+                        <td>Register a new term. Params list may be empty <code class="babble-code">[]</code>. An optional docstring can appear between the name and the params.</td>
+                    </tr>
+                    <tr>
+                        <td><code class="babble-code">(source name)</code></td>
+                        <td>Print the original source line for every arity of <code class="babble-code">name</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code class="babble-code">(doc name)</code></td>
+                        <td>Print the docstring for <code class="babble-code">name</code>. Aliases: <code class="babble-code">desc</code>, <code class="babble-code">man</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code class="babble-code">(handle username)</code></td>
+                        <td>Set your handle. Your name will appear in the prompt and be recorded with any terms you define.</td>
+                    </tr>
+                    <tr>
+                        <td><code class="babble-code">(about)</code></td>
+                        <td>Display server name, version, and build date.</td>
+                    </tr>
+                </table>
+
+            </div>
+
+        </div><!-- /guide-wrap -->
+    </div><!-- /cmdWindow -->
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <span><code class="babble-code">(babble)</code> <br/>
+            Created by <a href="https://danieltemkin.com">Daniel Temkin</a>, 2023 <br/>
+            One of <a href="https://mitpress.mit.edu/9780262553087/forty-four-esolangs/">Forty-Four Esolangs</a> (MIT Press)</span><br/>
+            <span class="footer-right"><a href="/console/">Open the console</a></span>
+        </div>
+    </footer>
+
+    <script src="syntax-highlighter.js"></script>
+    <script>
+        // Hero collapse animation
+        (function () {
+            // babble_red.svg natural dimensions: 193 × 208 (portrait, aspect ≈ 0.928)
+            var ASPECT = 193 / 208;
+            var STRIPE_SCALE_START = 3;  // stripes start 3× natural size; reach 1× at full collapse
+            var heroEl = document.getElementById('logoHero'); 
+            var heroStripes = document.getElementById('heroStripes');
+
+            function update() {
+                var vhPx = window.innerHeight;
+                var vwPx = window.innerWidth;
+
+                // Target: image fills the left gutter between the left edge and the center column
+                // Center column is max-width:860px, so gutter = (viewport - 860) / 2.
+                // Subtract 50px so the hero's right edge clears the column's left padding.
+                var gapWidth = Math.max(80, (vwPx - 860) / 2 - 50);
+
+                // Compute the final hero height so the image (height:100%, width:auto)
+                // exactly fills gapWidth at the collapsed state.
+                var finalImgH = gapWidth / ASPECT;
+                var HERO_MIN = finalImgH + 40;  // +40 for the 20px top/bottom offsets
+
+                var dist = vhPx - HERO_MIN;
+                if (dist <= 0) return;
+                var progress = Math.min(1, Math.max(0, window.scrollY / dist));
+
+                // Hero height: image is height:100%, so image height tracks hero height
+                heroEl.style.height = (vhPx - dist * progress - 40) + 'px';
+
+                // Hero width: collapse from (viewport - 20px) down to gapWidth
+                var w0 = vwPx - 20;
+                heroEl.style.width = (w0 + (gapWidth - w0) * progress) + 'px';
+
+                // Stripes zoom out from STRIPE_SCALE_START× down to 1× (natural = matches #cover)
+                var scale = STRIPE_SCALE_START - (STRIPE_SCALE_START - 1) * progress;
+                heroStripes.style.transform = 'scale(' + scale.toFixed(4) + ')';
+                // Stripes fade out over the final 20% of the collapse
+                var stripeOpacity = 0.25 * Math.max(0, 1 - Math.max(0, (progress - 0.8) / 0.2));
+                heroStripes.style.opacity = stripeOpacity.toFixed(4);
+            }
+
+            window.addEventListener('scroll', update, { passive: true });
+            window.addEventListener('resize', update);
+            update();
+        })();
+    </script>
+    <script>
+        (function () {
+            window.babble = window.babble || {};
+            babble.analyzer = babble.analyzer || { _builtins: null };
+
+            function applyAll() {
+                document.querySelectorAll('.babble-code').forEach(function (el) {
+                    var text = el.textContent;
+                    el.innerHTML = babble.syntaxHighlighter.highlight(text);
+                });
+            }
+
+            // Scripts are at bottom of body, DOM is already ready.
+            applyAll();
+
+            // Fetch builtins so keyword coloring works, then re-apply.
+            fetch('/builtins')
+                .then(function (r) { return r.json(); })
+                .then(function (list) {
+                    babble.analyzer._builtins = new Set(list);
+                    applyAll();
+                })
+                .catch(function () { /* builtins unavailable; skip keyword coloring */ });
+        })();
+    </script>
+</body>
+</html>

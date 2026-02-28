@@ -12,11 +12,10 @@
     --color-yellow: #c38418;
     --color-orange: #df5320;
     --color-red: #f22c40;
+    --color-literal: #73645e;
+    --color--var: #df5320;
 }
 
-html {
-    background-color: #000;
-}
 body {
     background-color: #221e1c;
     box-shadow: inset 0 0 170px rgba(0, 0, 0, 0.85);
