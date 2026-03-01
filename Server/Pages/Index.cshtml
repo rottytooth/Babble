@@ -15,6 +15,7 @@
 
     <div id="heroWrapper">
         <div id="logoHero">
+            <div id="heroTitle"><span style="color: var(--color-red)">(</span><span style="color: var(--color-seagreen)">bab</span><br/>&nbsp;<span style="color: var(--color-seagreen)">ble</span><span style="color: var(--color-red)">)</span></div>
             <div class="hero-img-wrap">
                 <div id="heroStripes"></div>
                 <img src="babble_red.svg" id="heroImg" alt="babble">
@@ -27,35 +28,22 @@
 
             <!-- ── What is babble? ─────────────────────────────── -->
             <div class="section" id="what">
-                <p><code class="babble-code">(babble)</code> is a dynamic, general-purpose language with a single, persistent, globally global namespace. Every term you define is stored in a server-side <i>lexicon</i> and immediately available to every other user. In (babble), there are no modules, no packages.</p>
+                <p><code class="babble-code">(babble)</code> is a dynamic, general-purpose language with a single, persistent, <i>globally global</i> namespace. In <code class="babble-code">(babble)</code>, there are no modules, no packages. Every term you define is stored in a server-side lexicon, immediately available to every other user.</p>
 
-                <p>If you define <code class="babble-code">double</code> as <code class="babble-code">(define double [x] (* 2 x))</code>, it is not only declared in your local session, but across all babble programs. Congratulations, you've contributed to babble's standard library!</p>
+                <p>If you define <code class="babble-code">double</code>, perhaps with the command <code class="babble-code">(define double [x] (* 2 x))</code>: congratulations, you've contributed to <code class="babble-code">babble</code>'s standard library! it's not only declared in your local session, but across all babble programs.</p>
 
                 <div class="inset-highlight">
                     <p><a href="/console/">Try the babble console</a></p>
                 </div>
 
-                <p>(babble) borrows its syntax and code-as-data philosophy from Clojure: everything is an s-expression and functions are first-class.</p>
+                <p><code class="babble-code">(babble)</code> borrows its syntax and code-as-data philosophy from Clojure: everything is an s-expression and functions are first-class.</p>
                 <p>Terms can be renamed or reorganized individually or through <i>dialects</i>, systematic renaming proposals approved and incorporated into the main language. These rely on community consensus, with an assumption of good faith.</p>
             </div>
 
             <!-- ── Syntax ─────────────────────────────────────── -->
             <div class="section" id="syntax">
                 <div class="section-title">Syntax</div>
-                <p>(babble) uses Clojure/Lisp syntax and encourages a tacit, pure style. Every expression is wrapped in parentheses, with the function name first, followed by its arguments.</p>
-
-                <div class="error-inset">
-                    <pre class="babble-code">(defn f [x]
-  (-> x
-      (inc)
-      (* 3)
-      (str "!")))</pre>
-                </div>
-                <p>Instead, we use a more concise, point-free style:</p>
-
-                <div class="code-block babble-code">(def f (comp #(str % "!") #(* % 3) inc))</div>
-
-                <p>Simple commands look very much Clojury:</p>
+                <p><span class="babble-code"><code class="babble-code">(babble)</code></span> uses Lispy syntax and encourages a tacit, pure style. Every expression is wrapped in parentheses, with the function name first, followed by its arguments:</p>
 
                 <div class="code-block babble-code">(+ 1 2)                     ; => 3
 (str "hello" " world")      ; => "hello world"
@@ -69,6 +57,8 @@
 
                 <p>Strings are double-quoted. Numbers may be integers or floats, and may include a leading sign.</p>
                 <div class="code-block babble-code">"hello"   42   3.14   -7   +1.5</div>
+
+
             </div>
 
             <!-- ── Defining Terms ─────────────────────────────── -->
@@ -111,7 +101,21 @@
 (define add [x y] (+ x y))</div>
 
                 <div class="callout">
-                    <strong>Names are permanent.</strong> Once a term is defined, it cannot easily be redefined or deleted. Choose names carefully &mdash; they belong to the whole community.
+                    <strong>Always think of Names as permanent.</strong> Once a term is defined, it is essentially part of the language, and can't easily be redefined or deleted.
+                </div>
+
+                <p>There is nothing like this <code class="babble-code">defn</code> construction in <code class="babble-code">(babble)</code>:</p>
+
+                <div class="error-inset">
+                    <pre class="babble-code">(defn f [x]
+  (-> x
+      (inc)
+      (* 3)
+      (str "!")))</pre>
+                </div>
+                <p>Instead, we use a more concise, point-free style:</p>
+
+                <div class="code-block babble-code">(define f [x] (comp #(str % "!") #(* % 3) inc))
                 </div>
             </div>
 
@@ -176,10 +180,14 @@
     <script>
         // Hero collapse animation
         (function () {
-            // babble_red.svg natural dimensions: 193 × 208 (portrait, aspect ≈ 0.928)
+            // babble_red.svg natural dimensions: 193 × 208
             var ASPECT = 193 / 208;
-            var STRIPE_SCALE_START = 3;  // stripes start 3× natural size; reach 1× at full collapse
-            var heroEl = document.getElementById('logoHero'); 
+
+            // stripes start 3× natural size
+            var STRIPE_SCALE_START = 3;
+
+            var heroEl = document.getElementById('logoHero');
+            var heroTitle = document.getElementById('heroTitle');
             var heroStripes = document.getElementById('heroStripes');
 
             function update() {
@@ -187,12 +195,11 @@
                 var vwPx = window.innerWidth;
 
                 // Target: image fills the left gutter between the left edge and the center column
-                // Center column is max-width:860px, so gutter = (viewport - 860) / 2.
-                // Subtract 50px so the hero's right edge clears the column's left padding.
+
+                // Center column is max-width:860px, so gutter = (viewport - 860) / 2. Subtract 50px so the hero's right edge clears the column's left padding.
                 var gapWidth = Math.max(80, (vwPx - 860) / 2 - 50);
 
-                // Compute the final hero height so the image (height:100%, width:auto)
-                // exactly fills gapWidth at the collapsed state.
+                // Compute the final hero height so the image (height:100%, width:auto) to exactly fill gapWidth at the collapsed state.
                 var finalImgH = gapWidth / ASPECT;
                 var HERO_MIN = finalImgH + 40;  // +40 for the 20px top/bottom offsets
 
@@ -207,6 +214,9 @@
                 var w0 = vwPx - 20;
                 heroEl.style.width = (w0 + (gapWidth - w0) * progress) + 'px';
 
+                // Title fades out in the first 40% of the collapse
+                heroTitle.style.opacity = Math.max(0, 1 - progress / 0.4).toFixed(3);
+
                 // Stripes zoom out from STRIPE_SCALE_START× down to 1× (natural = matches #cover)
                 var scale = STRIPE_SCALE_START - (STRIPE_SCALE_START - 1) * progress;
                 heroStripes.style.transform = 'scale(' + scale.toFixed(4) + ')';
@@ -218,31 +228,6 @@
             window.addEventListener('scroll', update, { passive: true });
             window.addEventListener('resize', update);
             update();
-        })();
-    </script>
-    <script>
-        (function () {
-            window.babble = window.babble || {};
-            babble.analyzer = babble.analyzer || { _builtins: null };
-
-            function applyAll() {
-                document.querySelectorAll('.babble-code').forEach(function (el) {
-                    var text = el.textContent;
-                    el.innerHTML = babble.syntaxHighlighter.highlight(text);
-                });
-            }
-
-            // Scripts are at bottom of body, DOM is already ready.
-            applyAll();
-
-            // Fetch builtins so keyword coloring works, then re-apply.
-            fetch('/builtins')
-                .then(function (r) { return r.json(); })
-                .then(function (list) {
-                    babble.analyzer._builtins = new Set(list);
-                    applyAll();
-                })
-                .catch(function () { /* builtins unavailable; skip keyword coloring */ });
         })();
     </script>
 </body>

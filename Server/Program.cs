@@ -1,20 +1,18 @@
-using Microsoft.Data.Sqlite;
+using Babble.DataAccess;
 using Babble.Models;
+using Babble.Repos;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddRazorPages();
 
-// Register LexiconDao as a singleton service
 builder.Services.AddSingleton<LexiconDao>();
 builder.Services.AddSingleton<BabbleGraphDao>();
+builder.Services.AddSingleton<BabbleRepo>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -38,7 +36,7 @@ app.Use(async (context, next) =>
 app.MapRazorPages();
 
 
-app.MapGet("/api/userip", (HttpContext context) => 
+app.MapGet("/api/userip", (HttpContext context) =>
 {
     return context.Connection.RemoteIpAddress?.ToString() ?? "";
 });
@@ -47,8 +45,8 @@ app.MapGet("/info", () =>
 {
     var assembly = System.Reflection.Assembly.GetExecutingAssembly();
     var version = assembly.GetName().Version?.ToString() ?? "1.0.0";
-    
-    return new 
+
+    return new
     {
         ProjectName = "Babble",
         Version = version,
@@ -65,13 +63,11 @@ app.MapGet("/builtins", () =>
 
 // With ?arity=N → returns a single matching term object.
 // Without arity   → returns a JSON array of all arity overloads.
-app.MapGet("/resolve/{cmd_name}", async (string cmd_name, int? arity, LexiconDao lexiconDao) =>
+app.MapGet("/resolve/{cmd_name}", async (string cmd_name, int? arity, BabbleRepo repo) =>
 {
     try
     {
-        var result = arity.HasValue
-            ? await lexiconDao.Resolve(cmd_name, arity.Value)
-            : await lexiconDao.ResolveAllArities(cmd_name);
+        var result = await repo.Resolve(cmd_name, arity);
         return Results.Content(result, "application/json");
     }
     catch (LexicalException ex)
@@ -85,11 +81,10 @@ app.MapGet("/resolve/{cmd_name}", async (string cmd_name, int? arity, LexiconDao
 })
 .WithName("ResolveTerm");
 
-app.MapGet("/resolve_all/{cmd_names}", async (string cmd_names, LexiconDao lexiconDao) =>
+app.MapGet("/resolve_all/{cmd_names}", async (string cmd_names, BabbleRepo repo) =>
 {
     try
     {
-        // Split the comma-separated list of term names
         var termNames = cmd_names.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         if (termNames.Length == 0)
@@ -97,7 +92,7 @@ app.MapGet("/resolve_all/{cmd_names}", async (string cmd_names, LexiconDao lexic
             return Results.BadRequest(new { error = "No term names provided" });
         }
 
-        var result = await lexiconDao.ResolveAll(termNames);
+        var result = await repo.ResolveAll(termNames);
         return Results.Content(result, "application/json");
     }
     catch (Exception ex)
@@ -107,11 +102,11 @@ app.MapGet("/resolve_all/{cmd_names}", async (string cmd_names, LexiconDao lexic
 })
 .WithName("ResolveAllTerms");
 
-app.MapGet("/resolve/{cmd_name}/doc", async (string cmd_name, LexiconDao lexiconDao) =>
+app.MapGet("/resolve/{cmd_name}/doc", async (string cmd_name, BabbleRepo repo) =>
 {
     try
     {
-        var result = await lexiconDao.ResolveDoc(cmd_name);
+        var result = await repo.ResolveDoc(cmd_name);
         return Results.Content(result, "application/json");
     }
     catch (LexicalException ex)
@@ -125,17 +120,15 @@ app.MapGet("/resolve/{cmd_name}/doc", async (string cmd_name, LexiconDao lexicon
 })
 .WithName("ResolveTermDoc");
 
-app.MapPost("/assign", async (TermDefinition termDefinition, LexiconDao lexiconDao) =>
+app.MapPost("/assign", async (TermDefinition termDefinition, BabbleRepo repo) =>
 {
     try
     {
-        var result = await lexiconDao.Assign(termDefinition);
+        var result = await repo.Assign(termDefinition);
         return Results.Content(result, "application/json");
     }
-    // also should catch LexicalException
     catch (AlreadyAssignedException ex)
     {
-        //FIXME: This gets thrown for a lot of other reasons
         return Results.Conflict(new { error = ex.Message });
     }
     catch (Exception ex)

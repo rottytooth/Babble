@@ -152,3 +152,26 @@
         applyHighlighting
     };
 })(window);
+
+(function () {
+    window.babble = window.babble || {};
+    babble.analyzer = babble.analyzer || { _builtins: null };
+
+    function applyAll() {
+        document.querySelectorAll('.babble-code').forEach(function (el) {
+            var text = el.textContent;
+            el.innerHTML = babble.syntaxHighlighter.highlight(text);
+        });
+    }
+
+    applyAll();
+
+    // Fetch builtins so keyword coloring works, then re-apply.
+    fetch('/builtins')
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+            babble.analyzer._builtins = new Set(list);
+            applyAll();
+        })
+        .catch(function () { /* builtins unavailable; skip keyword coloring */ });
+})();

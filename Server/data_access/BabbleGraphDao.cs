@@ -1,6 +1,6 @@
 using Neo4j.Driver;
 
-namespace Babble.Models;
+namespace Babble.DataAccess;
 
 public class BabbleGraphDao : IAsyncDisposable
 {
@@ -49,45 +49,6 @@ public class BabbleGraphDao : IAsyncDisposable
         await using var session = _driver.AsyncSession();
         await session.RunAsync(query, parameters);
     }
-
-    // public async Task<IReadOnlyList<IRecord>> RunReadAsync(string cypher, object? parameters = null)
-    // {
-    //     ThrowIfDisposed();
-
-    //     var queryParameters = parameters ?? new { };
-    //     await using var session = _driver.AsyncSession(options =>
-    //         options.WithDatabase(_database).WithDefaultAccessMode(AccessMode.Read));
-
-    //     var cursor = await session.RunAsync(cypher, queryParameters);
-    //     return await cursor.ToListAsync();
-    // }
-
-    // public async Task<IResultSummary> RunWriteAsync(string cypher, object? parameters = null)
-    // {
-    //     ThrowIfDisposed();
-
-    //     var queryParameters = parameters ?? new { };
-    //     await using var session = _driver.AsyncSession(options =>
-    //         options.WithDatabase(_database).WithDefaultAccessMode(AccessMode.Write));
-
-    //     var cursor = await session.RunAsync(cypher, queryParameters);
-    //     return await cursor.ConsumeAsync();
-    // }
-
-    // public async Task<bool> IsHealthyAsync()
-    // {
-    //     ThrowIfDisposed();
-
-    //     try
-    //     {
-    //         await _driver.VerifyConnectivityAsync();
-    //         return true;
-    //     }
-    //     catch
-    //     {
-    //         return false;
-    //     }
-    // }
 
     public async ValueTask DisposeAsync()
     {

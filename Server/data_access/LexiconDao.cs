@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
+using Babble.Models;
 
-namespace Babble.Models;
+namespace Babble.DataAccess;
 
 public class LexiconDao : IDisposable
 {
@@ -139,7 +140,7 @@ public class LexiconDao : IDisposable
         command.Parameters.AddWithValue("@name", name);
 
         var results = new List<object>();
-        
+
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
@@ -165,23 +166,23 @@ public class LexiconDao : IDisposable
     public async Task<string> ResolveAll(string[] termNames)
     {
         var results = new List<object>();
-        
+
         foreach (var termName in termNames)
         {
             using var command = _connection.CreateCommand();
             command.CommandText = "SELECT COUNT(*) FROM Term WHERE Name = @name;";
             command.Parameters.AddWithValue("@name", termName);
-            
+
             var count = await command.ExecuteScalarAsync();
             var exists = Convert.ToInt32(count) > 0;
-            
+
             results.Add(new
             {
                 name = termName,
                 exists = exists
             });
         }
-        
+
         return System.Text.Json.JsonSerializer.Serialize(results);
     }
 
