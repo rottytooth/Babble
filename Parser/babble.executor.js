@@ -49,24 +49,25 @@ babble.executor =
         }
 
         try {
-            // Call the resolve_all endpoint with comma-separated unknown symbol names
-            const symbolNames = symbols.unknowns.map(u => u.name).join(',');
-            const response = await fetch(`/resolve_all/${symbolNames}`);
-            
-            if (!response.ok) {
-                return { 
-                    status: "error", 
-                    message: "Failed to verify symbols with server" 
-                };
+            const unrecognized = [];
+            for (const unknown of symbols.unknowns) {
+                const name = String(unknown.name);
+                const arity = Number.isInteger(unknown.arity) ? unknown.arity : 0;
+                const response = await fetch(`/resolve/${encodeURIComponent(name)}?arity=${arity}`);
+
+                if (response.status === 404) {
+                    unrecognized.push(`${name}/${arity}`);
+                    continue;
+                }
+
+                if (!response.ok) {
+                    return {
+                        status: "error",
+                        message: "Failed to verify symbols with server"
+                    };
+                }
             }
 
-            const results = await response.json();
-            
-            // Find any symbols that don't exist (exists === false)
-            const unrecognized = results
-                .filter(r => !r.exists)
-                .map(r => r.name);
-            
             if (unrecognized.length > 0) {
                 return {
                     status: "error",
@@ -214,7 +215,11 @@ babble.executor =
             params = "";
 
         let builtIns = symbols.builtIns || [];
-        let symbolsUnknown = symbols.unknowns || [];
+        let symbolsUnknown = (symbols.unknowns || []).map(u => u.name);
+        let symbolCalls = (symbols.unknowns || []).map(u => ({
+            name: String(u.name),
+            arity: Number.isInteger(u.arity) ? u.arity : 0
+        }));
 
         // Replace unknown symbol names with their loc index before storing,
         // so that renaming a symbol only requires updating the Symbols column.
@@ -230,7 +235,7 @@ babble.executor =
             line = JSON.stringify(lineObj);
         } catch (_) {}
 
-        let body = {"term":term,"definition":definition,"params":params,"line":line,"creator":creator,"ipaddr":ipaddr,"doc":doc, "builtIns":builtIns, "symbols":symbolsUnknown};
+        let body = {"term":term,"definition":definition,"params":params,"line":line,"creator":creator,"ipaddr":ipaddr,"doc":doc, "builtIns":builtIns, "symbols":symbolsUnknown, "symbolCalls":symbolCalls};
 
         const response = await fetch(assign_url, {
             method:'POST',

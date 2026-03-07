@@ -12,7 +12,7 @@ A Clojure-like LISP where `define` adds to the standard library, available to al
 
 The project consists of four main components:
 
-### 🔧 Parser
+### Parser
 - **Language**: PEG.js grammar definition and executor
 - **Location**: `/Parser/`
 - **Files**: 
@@ -22,7 +22,7 @@ The project consists of four main components:
   - `babble.analyzer.js` - AST analyzer
   - `babble.code_emitter.js` - AST to code converter
 
-### 🖥️ Server
+### Server
 - **Language**: C# (.NET 9.0)
 - **Location**: `/Server/`
 - **Description**: ASP.NET Core web application providing Babble execution environment and API
@@ -31,14 +31,15 @@ The project consists of four main components:
   - Database for lexicon storage
   - Web-based console interface
 
-### 📱 Client
+### Client
 - **Language**: Node.js
 - **Location**: `/Client/`
-- **Description**: Standalone Node.js application for running Babble code
+- **Description**: Command line tool for running Babble code locally
 = **NOTE**: Still very much in progress, basically not functional atm
 - **Features**:
   - Command-line execution environment
   - Parser integration
+  - Communicates with Babble Server to resolve terms and create new ones
 
 ### ⚡ ClojureScript Executor
 - **Language**: ClojureScript
@@ -57,7 +58,6 @@ The project consists of four main components:
 - Node.js (for client and ClojureScript executor)
 - Java JDK 11+ (for ClojureScript compilation)
 - Clojure CLI tools (optional, for ClojureScript development)
-- Modern web browser
 
 ### Running the Server
 

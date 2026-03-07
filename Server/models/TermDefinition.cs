@@ -1,5 +1,11 @@
 namespace Babble.Models;
 
+public class SymbolCall
+{
+    public required string Name { get; set; }
+    public int Arity { get; set; }
+}
+
 public class TermDefinition
 {
     public required string Term { get; set; }
@@ -11,4 +17,5 @@ public class TermDefinition
     public string? Doc { get; set; }
     public List<string>? BuiltIns { get; set; }
     public List<string>? Symbols { get; set; }
+    public List<SymbolCall>? SymbolCalls { get; set; }
 }

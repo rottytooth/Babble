@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Babble.DataAccess;
 using Babble.Models;
 
@@ -6,10 +7,12 @@ namespace Babble.Repos;
 public class BabbleRepo
 {
     private readonly LexiconDao _lexiconDao;
+    private readonly BabbleGraphDao _babbleGraphDao;
 
-    public BabbleRepo(LexiconDao lexiconDao)
+    public BabbleRepo(LexiconDao lexiconDao, BabbleGraphDao babbleGraphDao)
     {
         _lexiconDao = lexiconDao;
+        _babbleGraphDao = babbleGraphDao;
     }
 
     // With arity → exact match; without → all arity overloads as a JSON array.
@@ -30,9 +33,44 @@ public class BabbleRepo
         return _lexiconDao.ResolveDoc(name);
     }
 
-    public Task<string> Assign(TermDefinition termdef)
+    public async Task<string> Assign(TermDefinition termdef)
     {
-        var retval = _lexiconDao.Assign(termdef);
+        var retval = await _lexiconDao.Assign(termdef);
+        var result = JsonSerializer.Deserialize<DatabaseResult>(retval);
+        if (result == null || !result.Complete)
+        {
+            // We are unlikely to get here, as LexiconDao should throw an exception on failure
+            throw new LexicalException($"Failed to assign term definition for '{termdef.Term}'.");
+        }
+
+        var arity = termdef.Params?.Count ?? 0;
+
+        if (_babbleGraphDao.IsAvailable)
+        {
+            try
+            {
+                await _babbleGraphDao.CreateTermAsync(result.Id.ToString(), termdef.Term, arity);
+                foreach (var sym in result.SymbolTerms)
+                {
+                    await _babbleGraphDao.CreateTermAsync(sym.Id.ToString(), sym.Name, sym.Arity);
+                }
+                if (result.SymbolTerms.Count > 0)
+                {
+                    var toIds = result.SymbolTerms.Select(s => s.Id.ToString()).ToList();
+                    await _babbleGraphDao.CreateTermDependenciesAsync(result.Id.ToString(), toIds);
+                }
+                Console.WriteLine($"Neo4j: created Term node for '{termdef.Term}' (id={result.Id}, deps={result.SymbolTerms.Count})");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Neo4j: failed to create Term node for '{termdef.Term}': {ex.Message}");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"Neo4j: skipped Term node for '{termdef.Term}' (not available)");
+        }
+
         return retval;
     }
 }

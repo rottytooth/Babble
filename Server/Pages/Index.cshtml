@@ -17,7 +17,6 @@
         <div id="logoHero">
             <div id="heroTitle"><span style="color: var(--color-red)">(</span><span style="color: var(--color-seagreen)">bab</span><br/>&nbsp;<span style="color: var(--color-seagreen)">ble</span><span style="color: var(--color-red)">)</span></div>
             <div class="hero-img-wrap">
-                <div id="heroStripes"></div>
                 <img src="babble_red.svg" id="heroImg" alt="babble">
             </div>
         </div>
@@ -30,14 +29,14 @@
             <div class="section" id="what">
                 <p><code class="babble-code">(babble)</code> is a dynamic, general-purpose language with a single, persistent, <i>globally global</i> namespace. In <code class="babble-code">(babble)</code>, there are no modules, no packages. Every term you define is stored in a server-side lexicon, immediately available to every other user.</p>
 
-                <p>If you define <code class="babble-code">double</code>, perhaps with the command <code class="babble-code">(define double [x] (* 2 x))</code>: congratulations, you've contributed to <code class="babble-code">babble</code>'s standard library! it's not only declared in your local session, but across all babble programs.</p>
+                <p>If you define <code class="babble-code">double</code>, perhaps with the command <code class="babble-code">(define double [x] (* 2 x))</code>, then Congratulations! You've contributed to the standard library; your new term is declared not only in your local session, but across all <code class="babble-code">(babble)</code> code running anywhere.</p>
 
                 <div class="inset-highlight">
                     <p><a href="/console/">Try the babble console</a></p>
                 </div>
 
-                <p><code class="babble-code">(babble)</code> borrows its syntax and code-as-data philosophy from Clojure: everything is an s-expression and functions are first-class.</p>
-                <p>Terms can be renamed or reorganized individually or through <i>dialects</i>, systematic renaming proposals approved and incorporated into the main language. These rely on community consensus, with an assumption of good faith.</p>
+                <p><code class="babble-code">(babble)</code> borrows its syntax and code-as-data philosophy from Clojure: functions are first-class and written as s-expressions.</p>
+                <p>Terms can be renamed or reorganized individually or through <i>dialects</i>, systematic renaming proposals approved and incorporated into the main language. These rely on community consensus, working with an assumption of good faith.</p>
             </div>
 
             <!-- ── Syntax ─────────────────────────────────────── -->
@@ -101,7 +100,7 @@
 (define add [x y] (+ x y))</div>
 
                 <div class="callout">
-                    <strong>Always think of Names as permanent.</strong> Once a term is defined, it is essentially part of the language, and can't easily be redefined or deleted.
+                    <strong>Always think of Names as permanent.</strong> Once a term is defined, it is essentially part of the language, and can't easily be redefined or renamed.
                 </div>
 
                 <p>There is nothing like this <code class="babble-code">defn</code> construction in <code class="babble-code">(babble)</code>:</p>
@@ -169,10 +168,13 @@
 
     <footer class="site-footer">
         <div class="footer-inner">
-            <span><code class="babble-code">(babble)</code> <br/>
-            Created by <a href="https://danieltemkin.com">Daniel Temkin</a>, 2023 <br/>
-            One of <a href="https://mitpress.mit.edu/9780262553087/forty-four-esolangs/">Forty-Four Esolangs</a> (MIT Press)</span><br/>
-            <span class="footer-right"><a href="/console/">Open the console</a></span>
+            <div>
+                <div><code class="babble-code">(babble)</code></div>
+                <div class="foot_gb">Created by <a href="https://danieltemkin.com">Daniel Temkin</a>, 2023</div>
+                <div class="foot_gb">One of <a href="https://mitpress.mit.edu/9780262553087/forty-four-esolangs/">Forty-Four Esolangs</a> (MIT Press)</div>
+            </div>
+            
+            <span class="footer-right foot_gb"><a href="/console/">Open the console</a></span>
         </div>
     </footer>
 
@@ -188,7 +190,6 @@
 
             var heroEl = document.getElementById('logoHero');
             var heroTitle = document.getElementById('heroTitle');
-            var heroStripes = document.getElementById('heroStripes');
 
             function update() {
                 var vhPx = window.innerHeight;
@@ -216,13 +217,6 @@
 
                 // Title fades out in the first 40% of the collapse
                 heroTitle.style.opacity = Math.max(0, 1 - progress / 0.4).toFixed(3);
-
-                // Stripes zoom out from STRIPE_SCALE_START× down to 1× (natural = matches #cover)
-                var scale = STRIPE_SCALE_START - (STRIPE_SCALE_START - 1) * progress;
-                heroStripes.style.transform = 'scale(' + scale.toFixed(4) + ')';
-                // Stripes fade out over the final 20% of the collapse
-                var stripeOpacity = 0.25 * Math.max(0, 1 - Math.max(0, (progress - 0.8) / 0.2));
-                heroStripes.style.opacity = stripeOpacity.toFixed(4);
             }
 
             window.addEventListener('scroll', update, { passive: true });

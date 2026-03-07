@@ -15,20 +15,12 @@ public class LexiconDao : IDisposable
     };
 
     const string ResolveQuery = @"
-        SELECT t.Params, t.Definition, t.Line,
-               (SELECT json_group_array(s.Name)
-                FROM TermDependency ts
-                JOIN Term s ON ts.SymbolID = s.ID
-                WHERE ts.TermID = t.ID) AS SymbolNames
+        SELECT t.Params, t.Definition, t.Line, t.Symbols AS SymbolNames
         FROM Term t
         WHERE t.Name = @name;";
 
     const string ResolveQueryWithArity = @"
-        SELECT t.Params, t.Definition, t.Line,
-               (SELECT json_group_array(s.Name)
-                FROM TermDependency ts
-                JOIN Term s ON ts.SymbolID = s.ID
-                WHERE ts.TermID = t.ID) AS SymbolNames
+        SELECT t.Params, t.Definition, t.Line, t.Symbols AS SymbolNames
         FROM Term t
         WHERE t.Name = @name AND t.ParamNum = @paramNum;";
 
@@ -39,20 +31,6 @@ public class LexiconDao : IDisposable
         VALUES
         (@name, @params, @paramcount, @def, @line, @creator, @ipaddr, @doc, @builtins, @symbols);";
 
-    // Links a symbol to a term. Returns 0 rows if @symbolname doesn't exist in Term,
-    // which the caller treats as "symbol not defined".
-    const string InsertDependencyQuery = @"
-        INSERT INTO TermDependency (TermID, SymbolID)
-        SELECT @termid, ID FROM Term WHERE Name = @symbolname;";
-
-    // Rebuilds Term.Symbols as a JSON array of all SymbolIDs in TermDependency for this term.
-    // Run once after all InsertDependencyQuery calls succeed.
-    const string UpdateSymbolsQuery = @"
-        UPDATE Term SET Symbols = (
-            SELECT json_group_array(SymbolID) FROM TermDependency WHERE TermID = @id
-        ) WHERE ID = @id;";
-
-
     public LexiconDao()
     {
         var connectionString = $"Data Source={Path.Combine(Directory.GetCurrentDirectory(), "BabbleLexicon.db")}";
@@ -62,16 +40,16 @@ public class LexiconDao : IDisposable
     }
 
     // Resolves a term by exact arity. Throws if not found.
-    public async Task<string> Resolve(string name, int paramNum)
+    public async Task<string> Resolve(string name, int arity)
     {
         using var command = _connection.CreateCommand();
         command.CommandText = ResolveQueryWithArity;
         command.Parameters.AddWithValue("@name", name);
-        command.Parameters.AddWithValue("@paramNum", paramNum);
+        command.Parameters.AddWithValue("@paramNum", arity);
 
         using var reader = await command.ExecuteReaderAsync();
         if (!await reader.ReadAsync())
-            throw new LexicalException($"Could not resolve term '{name}' with {paramNum} parameter(s)");
+            throw new LexicalException($"Could not resolve term '{name}' with {arity} parameter(s)");
 
         var paramsRaw = reader["Params"]?.ToString();
         object[] paramsArray = string.IsNullOrEmpty(paramsRaw) || paramsRaw == "null"
@@ -196,7 +174,7 @@ public class LexiconDao : IDisposable
         using var transaction = _connection.BeginTransaction();
         try
         {
-            // Insert Term with Symbols = NULL; populated via TermDependency after symbol links are created.
+            // Store symbol names directly in Term.Symbols (JSON); graph dependencies are managed in Neo4j.
             using var insertCommand = _connection.CreateCommand();
             insertCommand.Transaction = transaction;
             insertCommand.CommandText = InsertQuery;
@@ -212,7 +190,10 @@ public class LexiconDao : IDisposable
                 ? (object)DBNull.Value
                 : System.Text.Json.JsonSerializer.Serialize(termdef.BuiltIns, _dbJsonOptions);
             insertCommand.Parameters.AddWithValue("@builtins", builtInsJson);
-            insertCommand.Parameters.AddWithValue("@symbols", DBNull.Value);
+            var symbolsJson = termdef.Symbols == null || termdef.Symbols.Count == 0
+                ? (object)DBNull.Value
+                : System.Text.Json.JsonSerializer.Serialize(termdef.Symbols, _dbJsonOptions);
+            insertCommand.Parameters.AddWithValue("@symbols", symbolsJson);
 
             await insertCommand.ExecuteNonQueryAsync();
 
@@ -226,38 +207,71 @@ public class LexiconDao : IDisposable
             }
             Console.WriteLine($"Inserted Term '{termdef.Term}' with ID {newTermId}");
 
-            if (termdef.Symbols != null && termdef.Symbols.Count > 0)
+            var symbolTerms = new List<SymbolTerm>();
+            var arityAwareSymbolCalls = termdef.SymbolCalls?
+                .Where(s => !string.IsNullOrWhiteSpace(s.Name))
+                .Select(s => new { Name = s.Name.Trim(), Arity = (int?)s.Arity })
+                .GroupBy(s => new { s.Name, s.Arity })
+                .Select(g => g.First())
+                .ToList();
+
+            var legacySymbols = termdef.Symbols?
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => new { Name = s.Trim(), Arity = (int?)null })
+                .GroupBy(s => s.Name)
+                .Select(g => g.First())
+                .ToList();
+
+            var symbolsToValidate = (arityAwareSymbolCalls != null && arityAwareSymbolCalls.Count > 0)
+                ? arityAwareSymbolCalls
+                : legacySymbols;
+
+            if (symbolsToValidate != null && symbolsToValidate.Count > 0)
             {
-                foreach (var symbolName in termdef.Symbols)
+                foreach (var symbolRef in symbolsToValidate)
                 {
-                    using var symCommand = _connection.CreateCommand();
-                    symCommand.Transaction = transaction;
-                    symCommand.CommandText = InsertDependencyQuery;
-                    symCommand.Parameters.AddWithValue("@termid", newTermId);
-                    symCommand.Parameters.AddWithValue("@symbolname", symbolName);
-
-                    var rows = await symCommand.ExecuteNonQueryAsync();
-                    if (rows == 0)
+                    using var symIdCmd = _connection.CreateCommand();
+                    symIdCmd.Transaction = transaction;
+                    if (symbolRef.Arity.HasValue)
                     {
-                        transaction.Rollback();
-                        throw new LexicalException($"Symbol '{symbolName}' is not defined");
+                        symIdCmd.CommandText = "SELECT ID, ParamNum FROM Term WHERE Name = @name AND ParamNum = @paramNum LIMIT 1;";
+                        symIdCmd.Parameters.AddWithValue("@paramNum", symbolRef.Arity.Value);
                     }
-                    Console.WriteLine($"Linked symbol '{symbolName}' to Term {newTermId}");
-                }
+                    else
+                    {
+                        symIdCmd.CommandText = "SELECT ID, ParamNum FROM Term WHERE Name = @name LIMIT 1;";
+                    }
+                    symIdCmd.Parameters.AddWithValue("@name", symbolRef.Name);
 
-                using var updateCmd = _connection.CreateCommand();
-                updateCmd.Transaction = transaction;
-                updateCmd.CommandText = UpdateSymbolsQuery;
-                updateCmd.Parameters.AddWithValue("@id", newTermId);
-                await updateCmd.ExecuteNonQueryAsync();
+                    using var symReader = await symIdCmd.ExecuteReaderAsync();
+                    if (!await symReader.ReadAsync())
+                    {
+                        if (symbolRef.Arity.HasValue)
+                            throw new LexicalException($"Symbol '{symbolRef.Name}' with arity {symbolRef.Arity.Value} is not defined");
+
+                        throw new LexicalException($"Symbol '{symbolRef.Name}' is not defined");
+                    }
+
+                    symbolTerms.Add(new SymbolTerm
+                    {
+                        Id = Convert.ToInt64(symReader["ID"]),
+                        Name = symbolRef.Name,
+                        Arity = Convert.ToInt32(symReader["ParamNum"])
+                    });
+                }
             }
 
             transaction.Commit();
-            return "{\"complete\": true}";
+            return System.Text.Json.JsonSerializer.Serialize(new DatabaseResult
+            {
+                Complete = true,
+                Id = newTermId,
+                SymbolTerms = symbolTerms
+            });
         }
         catch (LexicalException)
         {
-            // Already rolled back; re-throw as-is.
+            transaction.Rollback();
             throw;
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == SQLitePCL.raw.SQLITE_CONSTRAINT)

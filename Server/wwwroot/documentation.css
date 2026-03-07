@@ -10,13 +10,16 @@
 }
 body {
     color: var(--body-text);
+    background-color: var(--color-yellow);
+    margin: 0;
 }
 
 /* HEADER */
 .guide-wrap {
     max-width: 860px;
     margin: 0 auto;
-    padding: 0 30px 40px 30px;
+    padding: 80px 30px 40px 30px;
+    background-color: #221e1c;
 }
 
 /* ── Section layout  */
@@ -120,7 +123,7 @@ body {
     color: var(--body-text);
     font-weight: bold;
     border-left: 3px solid var(--color-orange);
-    padding: 10px 14px;
+    padding: 20px 14px 25px 14px;
     margin: 34px 0 34px 0;
 }
 
@@ -184,6 +187,11 @@ body {
     flex-wrap: wrap;
     gap: 8px;
 }
+.foot_gb {
+    background-color: #221e1c;
+    padding: 0 10px 0 10px;
+    margin-top: 10px;
+}
 .site-footer .footer-right {
     font-size: 0.82em;
     opacity: 0.75;
@@ -214,8 +222,8 @@ body {
 #logoHero {
     position: fixed;
     top: 20px;
-    right: 20px;
-    height: calc(100vh - 40px);
+    right: 10px;
+    height: calc(100vh - 60px);
     z-index: 10;
     display: flex;
     align-items: center;
@@ -250,15 +258,6 @@ body {
     display: block;
 }
 
-#heroStripes {
-    position: absolute;
-    inset: 0;
-    background-image: url("stripes.png");
-    opacity: 0.25;
-    pointer-events: none;
-    transform-origin: top right;
-    z-index: 1000;
-}
 
 i {
     font-style: italic;
