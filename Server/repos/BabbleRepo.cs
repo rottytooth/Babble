@@ -6,10 +6,10 @@ namespace Babble.Repos;
 
 public class BabbleRepo
 {
-    private readonly LexiconDao _lexiconDao;
-    private readonly BabbleGraphDao _babbleGraphDao;
+    private readonly ILexiconDao _lexiconDao;
+    private readonly IBabbleGraphDao _babbleGraphDao;
 
-    public BabbleRepo(LexiconDao lexiconDao, BabbleGraphDao babbleGraphDao)
+    public BabbleRepo(ILexiconDao lexiconDao, IBabbleGraphDao babbleGraphDao)
     {
         _lexiconDao = lexiconDao;
         _babbleGraphDao = babbleGraphDao;
@@ -35,6 +35,13 @@ public class BabbleRepo
 
     public async Task<string> Assign(TermDefinition termdef)
     {
+        if (_babbleGraphDao.IsAvailable && termdef.Symbols?.Count > 0)
+        {
+            var circular = await _babbleGraphDao.CheckForCycleAsync(termdef.Term, termdef.Symbols);
+            if (circular != null)
+                throw new CircularDependencyException(circular);
+        }
+
         var retval = await _lexiconDao.Assign(termdef);
         var result = JsonSerializer.Deserialize<DatabaseResult>(retval);
         if (result == null || !result.Complete)

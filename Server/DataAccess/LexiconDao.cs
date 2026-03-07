@@ -3,7 +3,7 @@ using Babble.Models;
 
 namespace Babble.DataAccess;
 
-public class LexiconDao : IDisposable
+public class LexiconDao : ILexiconDao
 {
     private readonly SqliteConnection _connection;
     private bool _disposed = false;

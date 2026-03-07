@@ -26,3 +26,5 @@ appsettings.Development.json
 appsettings.json
 Server/appsettings.Development.json
 Server/appsettings.json
+obj
+bin

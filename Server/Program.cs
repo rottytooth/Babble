@@ -7,8 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddRazorPages();
 
-builder.Services.AddSingleton<LexiconDao>();
-builder.Services.AddSingleton<BabbleGraphDao>();
+builder.Services.AddSingleton<ILexiconDao, LexiconDao>();
+builder.Services.AddSingleton<IBabbleGraphDao, BabbleGraphDao>();
 builder.Services.AddSingleton<BabbleRepo>();
 
 var app = builder.Build();
@@ -129,7 +129,11 @@ app.MapPost("/assign", async (TermDefinition termDefinition, BabbleRepo repo) =>
     }
     catch (AlreadyAssignedException ex)
     {
-        return Results.Conflict(new { error = ex.Message });
+        return Results.Conflict(new { error = ex.Message, type = "already_assigned" });
+    }
+    catch (CircularDependencyException ex)
+    {
+        return Results.Conflict(new { error = ex.OffendingTerm, type = "circular_dependency" });
     }
     catch (Exception ex)
     {
@@ -143,7 +147,7 @@ app.MapPost("/assign", async (TermDefinition termDefinition, BabbleRepo repo) =>
 var applicationLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 applicationLifetime.ApplicationStopping.Register(() =>
 {
-    var lexiconDao = app.Services.GetService<LexiconDao>();
+    var lexiconDao = app.Services.GetService<ILexiconDao>();
     lexiconDao?.Dispose();
 });
 

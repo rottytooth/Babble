@@ -1,8 +1,9 @@
+using Babble.Models;
 using Neo4j.Driver;
 
 namespace Babble.DataAccess;
 
-public class BabbleGraphDao : IAsyncDisposable
+public class BabbleGraphDao : IBabbleGraphDao, IAsyncDisposable
 {
     private readonly IDriver? _driver;
     private readonly string _database;
@@ -60,6 +61,45 @@ public class BabbleGraphDao : IAsyncDisposable
         await cursor.ConsumeAsync();
     }
 
+    // Returns the name of the first dependency that would create a cycle, or null if safe.
+    // Checks by name so it can run before the new term is inserted (no rollback needed).
+    public async Task<string?> CheckForCycleAsync(string termName, IList<string> depNames)
+    {
+        if (_driver == null) throw new InvalidOperationException("Neo4j is not available.");
+        if (depNames == null || depNames.Count == 0) return null;
+
+        // Fetch all edges in the subgraph reachable from the dep nodes.
+        var query = @"
+            MATCH (start:Term)
+            WHERE start.name IN $dep_names
+            MATCH (start)-[:USES*0..]->(n)
+            OPTIONAL MATCH (n)-[:USES]->(m)
+            RETURN DISTINCT n.name AS from_node, m.name AS to_node
+        ";
+
+        var edges = new Dictionary<string, List<string>>();
+        await using var session = _driver.AsyncSession(o => o.WithDatabase(_database));
+        var cursor = await session.RunAsync(query, new { dep_names = depNames });
+        while (await cursor.FetchAsync())
+        {
+            var from = cursor.Current["from_node"].As<string>();
+            var to = cursor.Current["to_node"].As<string?>();
+            if (to == null) continue;
+            if (!edges.TryGetValue(from, out var list))
+                edges[from] = list = [];
+            list.Add(to);
+        }
+
+        var snapshot = new AdjacencySnapshot(edges);
+        var detector = new CycleDetector();
+        foreach (var dep in depNames)
+        {
+            if (detector.WouldCreateCycle(snapshot, termName, dep))
+                return dep;
+        }
+        return null;
+    }
+
     public async Task CreateTermDependenciesAsync(string fromTermId, IList<string> toTermIds)
     {
         if (_driver == null) throw new InvalidOperationException("Neo4j is not available.");
@@ -75,6 +115,12 @@ public class BabbleGraphDao : IAsyncDisposable
         await using var session = _driver.AsyncSession(o => o.WithDatabase(_database));
         var cursor = await session.RunAsync(query, new { from = fromTermId, tos = toTermIds });
         await cursor.ConsumeAsync();
+    }
+
+    sealed class AdjacencySnapshot(Dictionary<string, List<string>> edges) : IGraphSnapshot
+    {
+        public IEnumerable<string> GetDependencies(string node)
+            => edges.TryGetValue(node, out var deps) ? deps : [];
     }
 
     public async ValueTask DisposeAsync()

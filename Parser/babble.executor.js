@@ -246,11 +246,13 @@ babble.executor =
             body: JSON.stringify(body)
         });
         if (response.status == 409) {
-            // the assignment failed because it is already defined
             console.log(response);
-            let old_def = await response.json();
-            return {"status":"willnotadd","old_def":old_def.error};
-        } 
+            let data = await response.json();
+            if (data.type === "circular_dependency") {
+                return {"status":"error","message":`circular dependency: '${term}' depends on '${data.error}', which already depends on '${term}'`};
+            }
+            return {"status":"willnotadd","old_def":data.error};
+        }
         if (response.status == 422) {
             // malformed request, probably bad json
             console.log(response);
