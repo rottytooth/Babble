@@ -190,8 +190,45 @@ babble.code_emitter =
         }
     }
 
+    // Converts a single expanded term object {name, params, definition} to a def/defn string.
+    // `definition` must already be a parsed AST (array of body nodes, locs already expanded).
+    // 0-param terms become (def name body), parameterised terms become (defn name [p...] body...).
+    function termToDefnCode(term) {
+        const params = term.params || [];
+        const bodyAst = Array.isArray(term.definition) ? term.definition : [term.definition];
+
+        if (params.length === 0) {
+            const bodyCode = bodyAst.length === 1
+                ? nodeToCode(bodyAst[0])
+                : `(do ${bodyAst.map(nodeToCode).join(' ')})`;
+            return `(def ${term.name} ${bodyCode})`;
+        }
+
+        const paramsCode = `[${params.join(' ')}]`;
+        const bodyCode = bodyAst.map(nodeToCode).join(' ');
+        return `(defn ${term.name} ${paramsCode} ${bodyCode})`;
+    }
+
+    // Converts one or more expanded term objects sharing the same name to a def/defn string.
+    // Single-term: delegates to termToDefnCode. Multi-term: emits multi-arity (defn ...).
+    function termsToDefnCode(terms) {
+        if (terms.length === 1) return termToDefnCode(terms[0]);
+
+        const name = terms[0].name;
+        const clauses = terms.map(term => {
+            const params = term.params || [];
+            const bodyAst = Array.isArray(term.definition) ? term.definition : [term.definition];
+            const paramsCode = `[${params.join(' ')}]`;
+            const bodyCode = bodyAst.map(nodeToCode).join(' ');
+            return `(${paramsCode} ${bodyCode})`;
+        });
+        return `(defn ${name} ${clauses.join(' ')})`;
+    }
+
     // exposed methods
     return {
-        astToCode: astToCode
+        astToCode: astToCode,
+        termToDefnCode: termToDefnCode,
+        termsToDefnCode: termsToDefnCode
     };
 })();

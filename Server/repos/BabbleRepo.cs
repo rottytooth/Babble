@@ -16,11 +16,72 @@ public class BabbleRepo
     }
 
     // With arity → exact match; without → all arity overloads as a JSON array.
-    public Task<string> Resolve(string name, int? arity)
+    // With resolveDependencies → recursively resolves all transitive deps; requires arity.
+    // Dependencies are returned in topological order (deepest first).
+    public async Task<string> Resolve(string name, int? arity, bool resolveDependencies = false)
     {
-        return arity.HasValue
-            ? _lexiconDao.Resolve(name, arity.Value)
-            : _lexiconDao.ResolveAllArities(name);
+        if (!resolveDependencies)
+            return arity.HasValue
+                ? await _lexiconDao.Resolve(name, arity.Value)
+                : await _lexiconDao.ResolveAllArities(name);
+
+        var termJson = await _lexiconDao.Resolve(name, arity!.Value);
+
+        string[] rootSymbols;
+        using (var doc = JsonDocument.Parse(termJson))
+        {
+            rootSymbols = doc.RootElement.TryGetProperty("symbols", out var symsEl)
+                ? [.. symsEl.EnumerateArray().Select(e => e.GetString()!).Where(s => s != null)]
+                : [];
+        }
+
+        var depElements = new List<string>();
+        await CollectDepsTopological(rootSymbols, [name], depElements);
+
+        return $"{{\"term\":{termJson},\"dependencies\":[{string.Join(",", depElements)}]}}";
+    }
+
+    // Post-order DFS: recurse into a node's deps before adding the node itself,
+    // so the result list is in topological order (leaves first).
+    private async Task CollectDepsTopological(IEnumerable<string> symbols, HashSet<string> visited, List<string> result)
+    {
+        foreach (var sym in symbols)
+        {
+            if (!visited.Add(sym)) continue;
+
+            var arityJson = await _lexiconDao.ResolveAllArities(sym);
+
+            var childSymbols = new List<string>();
+            var termElements = new List<string>();
+            using (var doc = JsonDocument.Parse(arityJson))
+            {
+                foreach (var elem in doc.RootElement.EnumerateArray())
+                {
+                    termElements.Add(elem.GetRawText());
+                    if (elem.TryGetProperty("symbols", out var symsEl))
+                    {
+                        foreach (var s in symsEl.EnumerateArray())
+                        {
+                            var sName = s.GetString();
+                            if (sName != null) childSymbols.Add(sName);
+                        }
+                    }
+                }
+            }
+
+            await CollectDepsTopological(childSymbols.ToArray(), visited, result);
+            result.AddRange(termElements);
+        }
+    }
+
+    // Resolves all requested names + their transitive deps in a single topological pass.
+    // Returns {"ordered":[...all term objects, leaves first, deduped by name...]}.
+    public async Task<string> ResolveAllWithDeps(IEnumerable<string> names)
+    {
+        var visited = new HashSet<string>();
+        var elements = new List<string>();
+        await CollectDepsTopological(names.Distinct(), visited, elements);
+        return $"{{\"ordered\":[{string.Join(",", elements)}]}}";
     }
 
     public Task<string> ResolveAll(string[] termNames)

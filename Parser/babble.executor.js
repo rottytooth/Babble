@@ -107,72 +107,6 @@ babble.executor =
         return arities;
     }
 
-    // Fetch definitions for all unknown symbols, plus their transitive dependencies
-    // (since a fetched term's body may itself reference other Babble terms).
-    // unknowns: array of {name, arity} objects.
-    // Throws if any symbol cannot be resolved.
-    async function collect_symbol_defs(unknowns) {
-        const defs = {};
-        // Queue holds {name, arity} items; arity drives which overload to fetch.
-        const queue = unknowns.map(u => (typeof u === 'string' ? { name: u, arity: 0 } : u));
-        const visited = new Set();
-        while (queue.length > 0) {
-            const { name, arity } = queue.shift();
-            if (visited.has(name)) continue;
-            visited.add(name);
-            // Resolve the term — throws on failure so the caller can report the error.
-            const termResponse = await resolve_term(name, arity);
-            defs[name] = termResponse;
-            // For transitive deps, scan the definition AST to find what arity
-            // each dep symbol is called with inside this term's body.
-            const depNames = (termResponse.symbols || []).map(d => String(d));
-            if (depNames.length > 0) {
-                let defAst = termResponse.definition;
-                try { defAst = expandLocsToSymbols(defAst, depNames); } catch (_) {}
-                const depArities = findCallArities(defAst, new Set(depNames));
-                for (const depName of depNames) {
-                    if (!visited.has(depName)) {
-                        queue.push({ name: depName, arity: depArities.get(depName) ?? 0 });
-                    }
-                }
-            }
-        }
-        return defs;
-    }
-
-    // Walk an AST node, replacing unknown symbol references with inline
-    // (fn [params] body) nodes so the expression is self-contained when
-    // handed to SCI — no SCI namespace mutation required.
-    function substitute_symbols(node, defs) {
-        if (Array.isArray(node)) return node.map(n => substitute_symbols(n, defs));
-        if (node === null || typeof node !== 'object') return node;
-        if (node.type === 'symbol' && node.value && defs[node.value]
-                && node.symbolType !== 'local' && node.symbolType !== 'builtin') {
-            const term = defs[node.value];
-            const termSymbols = (term.symbols || []).map(s => String(s));
-            const params = (term.params || []).map(p => String(p));
-            let defAst = term.definition;
-            if (termSymbols.length > 0 && defAst) {
-                defAst = expandLocsToSymbols(defAst, termSymbols);
-            }
-            // Recursively substitute within the body (handles transitive deps)
-            defAst = substitute_symbols(defAst, defs);
-            // definition is stored as an array of body expressions; spread them into the fn form.
-            const bodyExprs = Array.isArray(defAst) ? defAst : [defAst];
-            return {
-                type: 'list',
-                value: [
-                    { type: 'symbol', value: 'fn' },
-                    { type: 'vector', value: params.map(p => ({ type: 'symbol', value: p })) },
-                    ...bodyExprs
-                ]
-            };
-        }
-        if (node.value !== undefined && typeof node.value === 'object') {
-            return { ...node, value: substitute_symbols(node.value, defs) };
-        }
-        return node;
-    }
 
     // Walk an AST node and expand {type:"symbol", loc:N} back to {type:"symbol", value:symbolList[N]}.
     function expandLocsToSymbols(node, symbolList) {
@@ -380,10 +314,20 @@ babble.executor =
         return await response.json();
     }
 
-    async function resolve_term(term, arity) {
-        const base = `${resolve_url}${encodeURIComponent(term)}`;
-        const url = (arity != null) ? `${base}?arity=${arity}` : base;
-        const response = await fetch(url);
+    // Fetches resolved definitions (with transitive deps) for an array of unknown symbols.
+    // unknowns: [{name, arity}, ...]
+    // Returns: {name → term object with params/definition/symbols}
+    async function collect_symbol_defs(unknowns) {
+        const body = unknowns.map(u => ({
+            name: String(u.name),
+            arity: Number.isInteger(u.arity) ? u.arity : 0
+        }));
+
+        const response = await fetch('/resolve/deps', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body)
+        });
 
         if (!response.ok) {
             let details = "";
@@ -391,17 +335,55 @@ babble.executor =
                 const err = await response.json();
                 details = err?.error || err?.title || err?.detail || "";
             } catch (_) {
-                try {
-                    details = await response.text();
-                } catch (_) {}
+                try { details = await response.text(); } catch (_) {}
             }
-            if (response.status === 404) {
-                throw new Error(details || `Term '${term}' is unknown`);
-            }
-            throw new Error(details || `Could not resolve term '${term}' with arity ${arity}`);
+            throw new Error(details || `Failed to resolve symbol dependencies`);
         }
 
-        return await response.json();
+        // data: {ordered: [...term objects, leaves-first, deduped by name...]}
+        const data = await response.json();
+        return data.ordered;
+    }
+
+    // Expands loc references and delegates to code_emitter.termsToDefnCode.
+    // arities: array of term objects ({name, params, definition, symbols}) for one name.
+    function buildDefnCode(_name, arities) {
+        try {
+            const expanded = arities.map(t => ({
+                name: t.name,
+                params: t.params || [],
+                definition: expandLocsToSymbols(
+                    typeof t.definition === 'string' ? JSON.parse(t.definition) : t.definition,
+                    t.symbols || []
+                )
+            }));
+            return babble.code_emitter.termsToDefnCode(expanded);
+        } catch (_) {
+            return null;
+        }
+    }
+
+    // Defines all terms in `ordered` into the SCI environment in topological order,
+    // grouping same-named terms into a single multi-arity defn.
+    // Throws if any defn fails to evaluate.
+    function resolve_symbols(ordered) {
+        const nameOrder = [];
+        const byName = new Map();
+        for (const term of ordered) {
+            if (!byName.has(term.name)) {
+                nameOrder.push(term.name);
+                byName.set(term.name, []);
+            }
+            byName.get(term.name).push(term);
+        }
+
+        for (const name of nameOrder) {
+            const code = buildDefnCode(name, byName.get(name));
+            if (code === null) continue;
+            const result = babble.core.eval_clojure_safe(code);
+            if (!result.success)
+                throw new Error(`Failed to define '${name}': ${result.error}`);
+        }
     }
 
     // Fetches all arity overloads of a term — returns an array of {name, params, line, symbols, ...} objects.
@@ -551,21 +533,19 @@ babble.executor =
             }
         }
         // this is not a define (or other handled by executor), so just eval it.
-        // Inline any unknown (server-defined) symbols into the AST as (fn [params] body)
-        // nodes before generating code, so the expression is self-contained for SCI.
+        // Resolve any unknown (server-defined) symbols by defining them in the SCI
+        // environment before evaluating, in topological order (deps first).
         const unknowns = resp.symbols.unknowns || [];
-        let evalAst = ast;
         if (unknowns.length > 0) {
-            let defs;
             try {
-                defs = await collect_symbol_defs(unknowns);
+                const ordered = await collect_symbol_defs(unknowns);
+                resolve_symbols(ordered);
             } catch (error) {
                 callback({"status":"error","message":error.message});
                 return;
             }
-            evalAst = substitute_symbols(ast, defs);
         }
-        let reworked_code = babble.code_emitter.astToCode(evalAst);
+        let reworked_code = babble.code_emitter.astToCode(ast);
 
         var x = babble.core.eval_clojure_safe(reworked_code);
         if (x.success)

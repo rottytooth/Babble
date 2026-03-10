@@ -22,6 +22,7 @@ app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.Equals("/console", StringComparison.Ordinal))
@@ -40,6 +41,7 @@ app.MapGet("/api/userip", (HttpContext context) =>
 {
     return context.Connection.RemoteIpAddress?.ToString() ?? "";
 });
+
 
 app.MapGet("/info", () =>
 {
@@ -61,6 +63,7 @@ app.MapGet("/builtins", () =>
 })
 .WithName("GetBuiltIns");
 
+
 // With ?arity=N → returns a single matching term object.
 // Without arity   → returns a JSON array of all arity overloads.
 app.MapGet("/resolve/{cmd_name}", async (string cmd_name, int? arity, BabbleRepo repo) =>
@@ -80,6 +83,28 @@ app.MapGet("/resolve/{cmd_name}", async (string cmd_name, int? arity, BabbleRepo
     }
 })
 .WithName("ResolveTerm");
+
+
+// Body: [{Name, Arity}, ...] → {ordered: [...all terms incl. roots, leaves-first, deduped by name]}
+app.MapPost("/resolve/deps", async (SymbolRef[] symbols, BabbleRepo repo) =>
+{
+    try
+    {
+        var names = symbols.Select(s => s.Name);
+        var result = await repo.ResolveAllWithDeps(names);
+        return Results.Content(result, "application/json");
+    }
+    catch (LexicalException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"An error occurred while resolving terms with dependencies: {ex.Message}");
+    }
+})
+.WithName("ResolveTermsWithDeps");
+
 
 app.MapGet("/resolve_all/{cmd_names}", async (string cmd_names, BabbleRepo repo) =>
 {
@@ -102,6 +127,7 @@ app.MapGet("/resolve_all/{cmd_names}", async (string cmd_names, BabbleRepo repo)
 })
 .WithName("ResolveAllTerms");
 
+
 app.MapGet("/resolve/{cmd_name}/doc", async (string cmd_name, BabbleRepo repo) =>
 {
     try
@@ -119,6 +145,7 @@ app.MapGet("/resolve/{cmd_name}/doc", async (string cmd_name, BabbleRepo repo) =
     }
 })
 .WithName("ResolveTermDoc");
+
 
 app.MapPost("/assign", async (TermDefinition termDefinition, BabbleRepo repo) =>
 {
@@ -152,3 +179,5 @@ applicationLifetime.ApplicationStopping.Register(() =>
 });
 
 app.Run();
+
+record SymbolRef(string Name, int Arity);

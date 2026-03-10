@@ -446,18 +446,19 @@ describe('server-defined term resolution', () => {
     // The body expression (value[3] of the line, stored as definition=[body]).
     const D_BODY = D_LINE.value[3];
 
-    // Mock server response for GET /resolve/d?arity=4
+    // Mock server response for POST /resolve/deps
     function makeFetchForD() {
-        return (url) => {
-            if (url === '/resolve/d?arity=4') {
+        return (url, options) => {
+            if (url === '/resolve/deps' && options?.method === 'POST') {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve({
-                        name: 'd',
-                        params: ['n', 'u', 'd', 'w'],
-                        definition: [D_BODY],  // stored as array of body expressions
-                        line: D_LINE,
-                        symbols: []
+                        ordered: [{
+                            name: 'd',
+                            params: ['n', 'u', 'd', 'w'],
+                            definition: [D_BODY],  // already-parsed array of body expressions
+                            symbols: []
+                        }]
                     })
                 });
             }
@@ -469,13 +470,13 @@ describe('server-defined term resolution', () => {
         global.clearBabbleTestFetch();
     });
 
-    test('(d 1 2 3 4) inlines d as fn without substituting the local param d in the body', async () => {
+    test('(d 1 2 3 4) defines d via defn then evaluates (d 1 2 3 4), without substituting the local param d in the body', async () => {
         global.setBabbleTestFetch(makeFetchForD());
 
-        let capturedCode = null;
+        const evalCalls = [];
         const origEval = babble.core.eval_clojure_safe;
         babble.core.eval_clojure_safe = (code) => {
-            capturedCode = code;
+            evalCalls.push(code);
             return { success: true, result: '0.25' };
         };
 
@@ -487,28 +488,15 @@ describe('server-defined term resolution', () => {
 
         expect(result.status).toBe('success');
 
-        // The generated code must contain exactly one 'fn' — the inlined definition of d.
-        // If the local param 'd' in the body is incorrectly substituted, there would be
-        // multiple nested fn forms.
-        const fnCount = (capturedCode.match(/\bfn\b/g) || []).length;
-        expect(fnCount).toBe(1);
+        // Two eval calls: first defines d, second evaluates the expression
+        expect(evalCalls.length).toBe(2);
 
-        // The fn must bind all four params
-        expect(capturedCode).toContain('[n u d w]');
+        // First call: defn for d — must bind all four params including the local 'd',
+        // which must NOT be treated as a recursive reference to the function being defined.
+        const defnCode = evalCalls[0];
+        expect(defnCode).toBe('(defn d [n u d w] (+ n (- u (/ d (* w)))))');
 
-        // The body must appear inside the fn — the arithmetic symbols should all be present
-        expect(capturedCode).toContain('+');
-        expect(capturedCode).toContain('-');
-        expect(capturedCode).toContain('/');
-        expect(capturedCode).toContain('*');
-
-        // The four literal arguments must appear after the fn form
-        expect(capturedCode).toContain('1');
-        expect(capturedCode).toContain('2');
-        expect(capturedCode).toContain('3');
-        expect(capturedCode).toContain('4');
-
-        // Full expected shape: ((fn [n u d w] (+ n (- u (/ d (* w))))) 1 2 3 4)
-        expect(capturedCode).toBe('((fn [n u d w] (+ n (- u (/ d (* w))))) 1 2 3 4)');
+        // Second call: the original expression, unchanged
+        expect(evalCalls[1]).toBe('(d 1 2 3 4)');
     });
 });
