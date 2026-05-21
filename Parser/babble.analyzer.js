@@ -201,21 +201,22 @@ babble.analyzer = {
       if (first.type === 'symbol') {
         const op = first.value;
         
-        // Reject def/defn — Babble uses 'define'
+        // Reject def/defn — Babble uses 'difinu'
         if (op === 'def' || op === 'defn') {
-          errors.push(`'${op}' is not supported; use 'define' instead`);
+          errors.push(`'${op}' is not supported; use 'difinu' instead`);
           return;
         }
 
-        // Check for define at non-top-level
-        if (op === 'define' && !context.isTopLevel) {
-          errors.push(`'define' can only be used at the top level, not inside other forms`);
+        // Check for difinu/define at non-top-level
+        if ((op === 'difinu' || op === 'define') && !context.isTopLevel) {
+          errors.push(`'${op}' can only be used at the top level, not inside other forms`);
           return;
         }
 
         switch (op) {
+          case 'difinu':
           case 'define':
-            // 'define' can be either def or defn based on its structure
+            // 'difinu'/'define' can be either def or defn based on its structure
             this.analyzeDefine(form, context, errors, warnings);
             break;
             
@@ -271,18 +272,18 @@ babble.analyzer = {
     },
     
     analyzeDefine(form, context, errors, warnings) {
-      // 'define' can be either 'def' or 'defn' based on its structure
+      // 'difinu' can be either 'def' or 'defn' based on its structure
       // If any element after name (skipping optional docstring) is a vector or list, it's a defn
       // Otherwise, it's a def
       
       if (form.value.length < 3) {
-        errors.push(`'define' requires at least 2 arguments, got ${form.value.length - 1}`);
+        errors.push(`'difinu' requires at least 2 arguments, got ${form.value.length - 1}`);
         return;
       }
       
       const name = form.value[1];
       if (name.type !== 'symbol') {
-        errors.push(`'define' name must be a symbol, got ${name.type}`);
+        errors.push(`'difinu' name must be a symbol, got ${name.type}`);
         return;
       }
       
@@ -292,12 +293,12 @@ babble.analyzer = {
       if (form.value[checkIndex] && form.value[checkIndex].type === 'string') {
         checkIndex = 3;
         if (form.value.length <= checkIndex) {
-          errors.push(`'define' with docstring requires additional arguments`);
+          errors.push(`'difinu' with docstring requires additional arguments`);
           return;
         }
       }
       
-      // define is always treated as defn; params vector is optional
+      // difinu is always treated as defn; params vector is optional
       this.analyzeDefn(form, context, errors, warnings);
     },
     
@@ -306,7 +307,7 @@ babble.analyzer = {
       // (def name value)
       // (def name "docstring" value)
       
-      const opName = form.value[0].value; // 'def' or 'define'
+      const opName = form.value[0].value; // 'def' or 'difinu'
       
       if (form.value.length < 3) {
         errors.push(`'${opName}' requires at least 2 arguments (name and value), got ${form.value.length - 1}`);
@@ -346,7 +347,7 @@ babble.analyzer = {
       // (defn name ([params1] body1...) ([params2] body2...) ...) - multi-arity
       // (defn name "docstring" ([params1] body1...) ([params2] body2...) ...) - multi-arity with docstring
       
-      const opName = form.value[0].value; // 'defn' or 'define'
+      const opName = form.value[0].value; // 'defn' or 'difinu'
       
       if (form.value.length < 3) {
         errors.push(`'${opName}' requires at least 2 arguments (name and params/body), got ${form.value.length - 1}`);

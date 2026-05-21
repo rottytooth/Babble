@@ -40,7 +40,7 @@ a, a:hover, a:visited {
 }
 #header {
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
     padding-bottom: 0;
     margin-bottom: 0;
 }
@@ -49,7 +49,8 @@ a, a:hover, a:visited {
     flex-shrink: 0;
 }
 #babbleLogo {
-    height: 100%;
+    display: block;
+    height: auto;
     width: auto;
 }
 .header_inline {
@@ -62,9 +63,7 @@ a, a:hover, a:visited {
 #headerText {
     padding-bottom: 0;
     margin-bottom: 0;
-    margin-left: 10px;
     line-height: 1.2;
-    margin-left: 190px;
 }
 #headerText span {
     padding-bottom: 0;

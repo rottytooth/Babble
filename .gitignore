@@ -28,3 +28,5 @@ Server/appsettings.Development.json
 Server/appsettings.json
 obj
 bin
+*.db
+*.db-journal

@@ -12,9 +12,9 @@
         <img src="/babble_red.svg" id="babbleLogo" alt="Babble Logo">
     </div>
     <div id="headerText">
-        babble @if (showVersion)
+        bablo/babble @if (showVersion)
         {<text> v<span id="versionDisplay"></span></text>}<span class="verify_pwd_response">&mdash;
-        the language where globals are truly global<br/>created by <a href="https://danieltemkin.com">Daniel Temkin</a>, one of <a href="https://mitpress.mit.edu/9780262553087/forty-four-esolangs/">Forty-Four Esolangs</a></span><span class="verify_pwd_response header_inline" style="padding-left: 0"><br/>
+        the language where globals are truly global / la lingvo kie la tutmondaj vere tutmondas<br/>created by <a href="https://danieltemkin.com">Daniel Temkin</a>, one of <a href="https://mitpress.mit.edu/9780262553087/forty-four-esolangs/">Forty-Four Esolangs</a></span><span class="verify_pwd_response header_inline" style="padding-left: 0"><br/>
         <a href="@ctaHref">@ctaText</a>@if (!string.IsNullOrWhiteSpace(ctaSuffix))
         {<text> @ctaSuffix</text>}<br/></span>
 
@@ -26,10 +26,10 @@
         @if (showHeaderCommands)
         {
             <div id="headerCommands" class="code_sample">
-                <span class="babble-code">(source xxx)</span> to see code for existing expression <i>xxx</i><br/>
-                <span class="babble-code">(define xxx "doc-string" [] <i>expressions</i>)</span> to register new expression<br/>
-                <span class="babble-code">(handle xxx)</span> to set your handle<br/>
-                <span class="babble-code">(about)</span> for more info
+                <span class="babble-code">(fonto xxx)</span> to see code for existing expression <i>xxx</i><br/>
+                <span class="babble-code">(difinu xxx "doc-string" [] <i>expressions</i>)</span> to register new expression<br/>
+                <span class="babble-code">(nomo xxx)</span> to set your handle<br/>
+                <span class="babble-code">(pri)</span> for more info
             </div>
         }
     </div>

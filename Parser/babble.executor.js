@@ -4,13 +4,13 @@
 // The main REPL entry point for the Babble client. Takes a line of Babble code,
 // parses and analyzes it, then routes it to the appropriate handler:
 //
-//   about                — fetches server info (/info) and prints name/version/build date.
-//   def / defn / define  — serializes the definition and POSTs it to the server
+//   pri                  — fetches server info (/info) and prints name/version/build date.
+//   def / defn / difinu  — serializes the definition and POSTs it to the server
 //                          (/assign), after verifying all unknown symbols exist
 //                          in the server's Term table (/resolve_all).
-//   handle               — sets babble.executor.handle (the current user handle)
+//   nomo                 — sets babble.executor.nomo (the current user handle)
 //                          and requests a password challenge from the caller.
-//   source               — fetches the original stored line for a term from the server
+//   fonto                — fetches the original stored line for a term from the server
 //                          (/resolve/<term>) and returns it via callback.
 //   doc / desc / man     — fetches documentation text for a term from the server
 //                          (/resolve/<term>/doc) and returns it via callback.
@@ -34,8 +34,9 @@ babble.executor =
     const assign_url = '/assign';
 
     const preset_args = {
-        "about": 0,
-        "handle": 1,
+        "pri": 0,
+        "nomo": 1,
+        "fonto": 1,
         "source": 1,
         "doc": 1,
         "desc": 1,
@@ -194,10 +195,15 @@ babble.executor =
             return {"status":"error","message":"internal error: Could not process request, likely bad json"};
         }
         if (response.status == 500) {
-            // endpoint issues
             console.log(response);
             console.log(body);
-            return {"status":"error","message":"internal error: Could not process request"};
+            try {
+                const errData = await response.json();
+                const detail = errData?.detail || errData?.title || errData?.message || "";
+                return {"status":"error","message": detail ? `internal error: ${detail}` : "internal error: Could not process request"};
+            } catch (_) {
+                return {"status":"error","message":"internal error: Could not process request"};
+            }
         }
         if (response.status == 200) {
             // added successfully
@@ -262,7 +268,7 @@ babble.executor =
                     const bodyExpressions = arityClause.value.slice(1);
                     const definition = JSON.stringify(bodyExpressions);
                     promises.push(
-                        call_server_assign(name, definition, params, symbols, JSON.stringify(defForm), babble.executor.handle, ipaddr, docstring)
+                        call_server_assign(name, definition, params, symbols, JSON.stringify(defForm), babble.executor.nomo, ipaddr, docstring)
                     );
                 }
             }
@@ -284,7 +290,7 @@ babble.executor =
             const bodyExpressions = defForm.value.slice(hasParamVector ? bodyStart + 1 : bodyStart);
             const definition = JSON.stringify(bodyExpressions);
 
-            call_server_assign(name, definition, params, symbols, JSON.stringify(defForm), babble.executor.handle, ipaddr, docstring).then(result => {
+            call_server_assign(name, definition, params, symbols, JSON.stringify(defForm), babble.executor.nomo, ipaddr, docstring).then(result => {
                 handleAssignResult(result, callback, name);
             }).catch(error => {
                 callback({"status":"error","message":`Failed to assign definition: ${error.message}`});
@@ -447,14 +453,15 @@ babble.executor =
             var ast = babble.parser.parse(line);
         } catch (error) {
             callback({"status":"error","message":`SyntaxError: ${error.message}`});
-            return; 
+            return;
         }
+        try {
         let resp = await babble.analyzer.analyze(ast);
         if (resp.status !== "success") {
             callback(resp);
             return;
         }
-        
+
         // Check if the first expression is define, an existing term, or something else requiring special handling
         if (ast && ast.length > 0 && ast[0].type === 'list' && ast[0].value && ast[0].value.length > 0) {
             const firstSymbol = ast[0].value[0];
@@ -464,6 +471,7 @@ babble.executor =
             }
             switch (firstSymbol.value) {
                 case 'about':
+                case 'pri':
                     try {
                         const infoResponse = await fetch('/info');
                         if (!infoResponse.ok) {
@@ -478,30 +486,33 @@ babble.executor =
                     return;
                 case 'def':
                 case 'defn':
-                    callback({"status":"error","message":`'${firstSymbol.value}' is not supported — use 'define' instead`});
+                    callback({"status":"error","message":`'${firstSymbol.value}' is not supported — use 'difinu' instead`});
                     return;
                 case 'define':
+                case 'difinu':
                     await assign_definition(ast, resp.symbols, callback);
                     return;
                 case 'handle':
+                case 'nomo':
                     if (ast[0].value.length < 2) {
-                        callback({"status":"error","message":"Missing handle argument"});
+                        callback({"status":"error","message":"Missing nomo argument"});
                         return;
                     }
                     if (!ast[0].value[1].value || typeof ast[0].value[1].value !== 'string') {
-                        callback({"status":"error","message":"Handle must be a symbol or string"});
+                        callback({"status":"error","message":"Nomo must be a symbol or string"});
                         return;
                     }
-                    babble.executor.handle = ast[0].value[1].value;
-                    callback({"status":"verify_pwd", "message":"handle to be verified", "handle": babble.executor.handle});
+                    babble.executor.nomo = ast[0].value[1].value;
+                    callback({"status":"verify_pwd", "message":"nomo to be verified", "handle": babble.executor.nomo});
                     return;
                 case "source":
+                case "fonto":
                     if (ast[0].value.length < 2) {
                         callback({"status":"error","message":"Missing term argument"});
                         return;
                     }
                     if (!ast[0].value[1].value || typeof ast[0].value[1].value !== 'string') {
-                        callback({"status":"error","message":"Source target must be a symbol or string"});
+                        callback({"status":"error","message":"Fonto target must be a symbol or string"});
                         return;
                     }
                     try {
@@ -552,6 +563,10 @@ babble.executor =
             callback({"status":"success","message":x.result});
         else
             callback({"status":"error","message":x.error});
+        } catch (error) {
+            console.error("babble.executor.ex unhandled error:", error);
+            callback({"status":"error","message": error.message || String(error)});
+        }
 }
 
     // exposed methods
@@ -560,4 +575,4 @@ babble.executor =
     };
 })();
 
-babble.executor.handle = null;
+babble.executor.nomo = null;

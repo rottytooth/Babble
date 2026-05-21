@@ -24,7 +24,7 @@ public class SemanticInterpreter
         };
         public static string[] ThreadingMacros = { "->", "->>", "as->", "some->", "some->>" };
         public static string[] ReplDebug = { "doc", "pst", "find-doc", "dir", "apropos", "prn", "println", "print", "clojure.pprint/pprint" };
-        public static string[] BabbleBuiltIns = { "source", "desc", "man", "define", "handle", "about" };
+        public static string[] BabbleBuiltIns = { "source", "fonto", "desc", "man", "define", "handle", "about", "difinu", "nomo", "pri" };
         public static string[] SymbolsKeywordsLiterals = { "symbol", "symbol?", "gensym", "keyword", "keyword?", "find-keyword", "true", "false", "nil" };
         public static string[] MathBitwise = { "abs", "mod", "rand", "rand-int", "bit-and", "bit-or", "bit-xor", "bit-not", "bit-shift-left", "bit-shift-right" };
         public static string[] IoFiles = { "slurp", "spit", "read-line", "read-string", "pr-str", "str", "format" };

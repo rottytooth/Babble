@@ -56,7 +56,7 @@ async function loadBabbleModules() {
                             'cons', 'first', 'rest', 'conj', 'count', 'str', 'println', 'inc', 'dec',
                             'nil?', 'empty?', 'some?', 'number?', 'string?', 'vector?', 'list?',
                             'apply', 'partial', 'comp', 'identity', 'atom', 'swap!', 'reset!', 'deref',
-                            'define', 'source', 'doc', 'desc', 'man', 'handle', 'about',
+                            'define', 'source', 'doc', 'desc', 'man', 'nomo', 'pri',
                         ]) });
                     }
                     return Promise.reject(new Error(`Unexpected fetch: ${url}`));

@@ -15,7 +15,7 @@
 
     <div id="heroWrapper">
         <div id="logoHero">
-            <div id="heroTitle"><span style="color: var(--color-red)">(</span><span style="color: var(--color-seagreen)">bab</span><br/>&nbsp;<span style="color: var(--color-seagreen)">ble</span><span style="color: var(--color-red)">)</span></div>
+            <div id="heroTitle"><span style="color: var(--color-red)">(</span><span style="color: var(--color-seagreen)">ba</span><br/>&nbsp;<span style="color: var(--color-seagreen)">blo</span><span style="color: var(--color-red)">)</span></div>
             <div class="hero-img-wrap">
                 <img src="babble_red.svg" id="heroImg" alt="babble">
             </div>
@@ -25,24 +25,24 @@
     <div id="cmdWindow">
         <div class="guide-wrap">
 
-            <!-- ── What is babble? ─────────────────────────────── -->
+            <!-- ── What is bablo? ─────────────────────────────── -->
             <div class="section" id="what">
-                <p><code class="babble-code">(babble)</code> is a dynamic, general-purpose language with a single, persistent, <i>globally global</i> namespace. In <code class="babble-code">(babble)</code>, there are no modules, no packages. Every term you define is stored in a server-side lexicon, immediately available to every other user.</p>
+                <p><code class="babble-code">(bablo)</code> is a dynamic, general-purpose language with a single, persistent, <i>globally global</i> namespace. In <code class="babble-code">(bablo)</code>, there are no modules, no packages. Every term you define is stored in a server-side lexicon, immediately available to every other user.</p>
 
-                <p>If you define <code class="babble-code">double</code>, perhaps with the command <code class="babble-code">(define double [x] (* 2 x))</code>, then Congratulations! You've contributed to the standard library; your new term is declared not only in your local session, but across all <code class="babble-code">(babble)</code> code running anywhere.</p>
+                <p>If you define <code class="babble-code">double</code>, perhaps with the command <code class="babble-code">(define double [x] (* 2 x))</code>, then Congratulations! You've contributed to the standard library; your new term is declared not only in your local session, but across all <code class="babble-code">(bablo)</code> code running anywhere.</p>
 
                 <div class="inset-highlight">
-                    <p><a href="/console/">Try the babble console</a></p>
+                    <p><a href="/console/">Try the bablo console</a></p>
                 </div>
 
-                <p><code class="babble-code">(babble)</code> borrows its syntax and code-as-data philosophy from Clojure: functions are first-class and written as s-expressions.</p>
+                <p><code class="babble-code">(bablo)</code> borrows its syntax and code-as-data philosophy from Clojure: functions are first-class and written as s-expressions.</p>
                 <p>Terms can be renamed or reorganized individually or through <i>dialects</i>, systematic renaming proposals approved and incorporated into the main language. These rely on community consensus, working with an assumption of good faith.</p>
             </div>
 
             <!-- ── Syntax ─────────────────────────────────────── -->
             <div class="section" id="syntax">
                 <div class="section-title">Syntax</div>
-                <p><span class="babble-code"><code class="babble-code">(babble)</code></span> uses Lispy syntax and encourages a tacit, pure style. Every expression is wrapped in parentheses, with the function name first, followed by its arguments:</p>
+                <p><span class="babble-code"><code class="babble-code">(bablo)</code></span> uses Lispy syntax and encourages a tacit, pure style. Every expression is wrapped in parentheses, with the function name first, followed by its arguments:</p>
 
                 <div class="code-block babble-code">(+ 1 2)                     ; => 3
 (str "hello" " world")      ; => "hello world"
@@ -103,7 +103,7 @@
                     <strong>Always think of Names as permanent.</strong> Once a term is defined, it is essentially part of the language, and can't easily be redefined or renamed.
                 </div>
 
-                <p>There is nothing like this <code class="babble-code">defn</code> construction in <code class="babble-code">(babble)</code>:</p>
+                <p>There is nothing like this <code class="babble-code">defn</code> construction in <code class="babble-code">(bablo)</code>:</p>
 
                 <div class="error-inset">
                     <pre class="babble-code">(defn f [x]
@@ -140,7 +140,7 @@
                 <div class="section-title">Lexicon</div>
                 <table class="cmd-table">
                     <tr>
-                        <td><code class="babble-code">(define name [params] body)</code></td>
+                        <td><code class="babble-code">(difinu name [params] body)</code></td>
                         <td>Register a new term. Params list may be empty <code class="babble-code">[]</code>. An optional docstring can appear between the name and the params.</td>
                     </tr>
                     <tr>
@@ -152,12 +152,12 @@
                         <td>Print the docstring for <code class="babble-code">name</code>. Aliases: <code class="babble-code">desc</code>, <code class="babble-code">man</code>.</td>
                     </tr>
                     <tr>
-                        <td><code class="babble-code">(handle username)</code></td>
+                        <td><code class="babble-code">(nomo username)</code></td>
                         <td>Set your handle. Your name will appear in the prompt and be recorded with any terms you define.</td>
                     </tr>
                     <tr>
-                        <td><code class="babble-code">(about)</code></td>
-                        <td>Display server name, version, and build date.</td>
+                        <td><code class="babble-code">(pri)</code></td>
+                        <td>About: display server name, version, and build date.</td>
                     </tr>
                 </table>
 

@@ -2,12 +2,27 @@
 const prev_lines = [];
 let line_history = 0;
 
+function syncLogoHeight() {
+    const headerText = document.getElementById('headerText');
+    const logo = document.getElementById('babbleLogo');
+    if (!headerText || !logo) return;
+    logo.style.height = '';
+    logo.style.width = '';
+    const h = headerText.offsetHeight;
+    logo.style.height = h + 'px';
+    logo.style.width = 'auto';
+}
+
 // Focus the input when page loads
 window.addEventListener('load', () => {
+    syncLogoHeight();
     const userInput = document.getElementById("userInput");
     if (userInput)
         userInput.focus();
 });
+
+window.addEventListener('resize', syncLogoHeight);
+document.fonts.ready.then(syncLogoHeight);
 
 // Handle clicks anywhere in the document to focus the current input,
 // but don't steal focus if the user is making a text selection.
@@ -228,19 +243,19 @@ const addLine = (responsepacket) => {
     addNewPrompt();
 }
 
-function handlePasswordSubmission(password, handle) {
+function handlePasswordSubmission(password, nomo) {
     // Handle password submission logic here
-    console.log('Password submitted for handle:', handle);
+    console.log('Password submitted for nomo:', nomo);
     console.log('Password length:', password.length);
     
     // FIXME: You can add your password verification logic here
     // For example, make an API call to verify the password
 
-    // Store the handle in session cookie
-    // document.cookie = `handle=${handle}; path=/; SameSite=Strict; Secure`;
+    // Store the nomo in session cookie
+    // document.cookie = `nomo=${nomo}; path=/; SameSite=Strict; Secure`;
 
-    // Set the handle in babble.executor
-    babble.executor.handle = handle;
+    // Set the nomo in babble.executor
+    babble.executor.nomo = nomo;
     
     // Remove the password input and continue with normal flow
     const passwordField = document.getElementById('passwordField');
@@ -273,11 +288,11 @@ async function addNewPrompt() {
     let carrot = document.createElement('span');
     
     // let handle = getCookie('handle');
-    let handle = babble.executor.handle;
+    let nomo = babble.executor.nomo;
     let promptPrefix = '';
     
-    if (handle) {
-        promptPrefix = `[${handle}]`;
+    if (nomo) {
+        promptPrefix = `[${nomo}]`;
     } else {
         // is it possible for this to change while we're on the page?
         // if not, we should just cache it once on load
